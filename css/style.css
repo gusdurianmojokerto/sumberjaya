@@ -558,15 +558,36 @@ table tr:hover { background: #f8f9fa; }
   .card { padding: 16px; border-radius: 10px; }
   .card h3 { font-size: 1rem; }
 
-  .calendar-grid { gap: 2px; }
-  .cal-day { min-height: 60px; padding: 3px; }
-  .cal-day-number { font-size: 0.7rem; width: 20px; height: 20px; }
-  .cal-session {
-    font-size: 0.55rem;
-    padding: 2px 4px;
-    margin-bottom: 1px;
+  .calendar-grid { gap: 3px; }
+  .cal-day {
+    aspect-ratio: 1;
+    min-height: auto;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 6px;
   }
-  .cal-day-header { font-size: 0.65rem; padding: 4px 2px; }
+  .cal-day-number {
+    font-size: 0.75rem;
+    width: 22px;
+    height: 22px;
+    margin-bottom: 2px;
+    flex-shrink: 0;
+  }
+  .cal-day-number.today { width: 22px; height: 22px; }
+  .cal-session {
+    font-size: 0.6rem;
+    padding: 3px 4px;
+    margin-bottom: 2px;
+    border-radius: 3px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+  }
+  .cal-day-header { font-size: 0.7rem; padding: 6px 2px; }
 
   .time-row { grid-template-columns: 1fr; }
   .days-grid { gap: 4px; }
@@ -601,11 +622,44 @@ table tr:hover { background: #f8f9fa; }
   .calendar-nav h2 { font-size: 1rem; }
 }
 
+@media (min-width: 481px) and (max-width: 768px) {
+  .cal-day { aspect-ratio: auto; min-height: 65px; }
+}
+
 @media (max-width: 480px) {
   .tab-btn { padding: 6px 10px; font-size: 0.72rem; }
-  .cal-day { min-height: 50px; }
-  .cal-session { font-size: 0.48rem; padding: 1px 3px; }
-  .cal-day-number { width: 18px; height: 18px; font-size: 0.6rem; }
+
+  .calendar-grid { gap: 2px; }
+  .cal-day {
+    aspect-ratio: 1;
+    min-height: auto;
+    padding: 3px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 4px;
+  }
+  .cal-day-number {
+    font-size: 0.65rem;
+    width: 20px;
+    height: 20px;
+    margin-bottom: 1px;
+    flex-shrink: 0;
+  }
+  .cal-day-number.today { width: 20px; height: 20px; }
+  .cal-session {
+    font-size: 0.5rem;
+    padding: 2px 3px;
+    margin-bottom: 1px;
+    border-radius: 2px;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+  }
+  .cal-day-header { font-size: 0.6rem; padding: 4px 2px; }
+
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .stat-card { padding: 12px; }
   .stat-card .stat-value { font-size: 1.1rem; }
