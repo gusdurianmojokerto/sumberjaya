@@ -428,6 +428,12 @@ window.downloadReceiptPNG = async function() {
   const receipt = document.getElementById('receipt-content');
   if (!receipt) return;
 
+  const origWidth = receipt.style.width;
+  const origMaxW = receipt.style.maxWidth;
+
+  receipt.style.width = '500px';
+  receipt.style.maxWidth = '500px';
+
   try {
     const canvas = await html2canvas(receipt, {
       scale: 2,
@@ -442,6 +448,9 @@ window.downloadReceiptPNG = async function() {
   } catch (err) {
     alert('Gagal mengunduh: ' + err.message);
   }
+
+  receipt.style.width = origWidth;
+  receipt.style.maxWidth = origMaxW;
 };
 
 // ============ REPORTS / STATISTICS ============
