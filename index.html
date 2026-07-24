@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sumber Jaya Private Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-brand">
+      Sumber Jaya Private Course
+      <small>Bimbingan Belajar Profesional</small>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="customers">Pelanggan</button>
+      <button class="tab-btn" data-tab="calendar">Kalender Absen</button>
+      <button class="tab-btn" data-tab="receipt">Cetak Struk</button>
+      <button class="tab-btn" data-tab="reports">Laporan</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- TAB: CUSTOMERS -->
+  <section id="tab-customers" class="tab-content active">
+    <div class="card">
+      <form id="customer-form"></form>
+    </div>
+    <div class="card">
+      <h3>Daftar Pelanggan</h3>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Nama</th>
+              <th>Hari</th>
+              <th>Jam Mulai</th>
+              <th>Jam Selesai</th>
+              <th>Harga/Sesi</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="customers-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: CALENDAR -->
+  <section id="tab-calendar" class="tab-content">
+    <div class="card">
+      <div class="calendar-nav">
+        <button onclick="prevMonth()">&lt;</button>
+        <h2 id="calendar-title"></h2>
+        <button onclick="nextMonth()">&gt;</button>
+      </div>
+      <div id="calendar-grid" class="calendar-grid"></div>
+    </div>
+    <div class="card" style="font-size:0.85rem;color:var(--text-secondary)">
+      <p><strong>Keterangan:</strong> Klik nama pelanggan pada kalender untuk menandai <span style="color:var(--success)">Hadir</span> / <span style="color:var(--danger)">Alpha</span>.</p>
+      <p>
+        <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#e8f0fe;vertical-align:middle"></span> Belum diabsen &nbsp;
+        <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#e6f4ea;vertical-align:middle"></span> Hadir &nbsp;
+        <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#fce8e6;vertical-align:middle"></span> Alpha
+      </p>
+    </div>
+  </section>
+
+  <!-- TAB: RECEIPT -->
+  <section id="tab-receipt" class="tab-content">
+    <div class="card">
+      <h3>Cetak Struk Tagihan</h3>
+      <div class="receipt-controls">
+        <div class="form-row">
+          <label>Pilih Pelanggan</label>
+          <select id="receipt-customer">
+            <option value="">-- Pilih Pelanggan --</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Pilih Bulan</label>
+          <select id="receipt-month"></select>
+        </div>
+        <button class="btn-primary" onclick="generateReceipt()">Buat Struk</button>
+      </div>
+    </div>
+    <div class="card receipt-output" id="receipt-output">
+      <p style="color:var(--text-secondary);text-align:center;padding:40px">Pilih pelanggan dan bulan, lalu klik "Buat Struk"</p>
+    </div>
+    <div style="text-align:center;margin-top:16px;display:none" id="download-receipt">
+      <button class="btn-success" onclick="downloadReceiptPNG()">Download Struk (PNG)</button>
+    </div>
+  </section>
+
+  <!-- TAB: REPORTS -->
+  <section id="tab-reports" class="tab-content">
+    <div class="card">
+      <h3>Grafik Pemasukan Bulanan</h3>
+      <div style="position:relative;height:300px">
+        <canvas id="incomeChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Ringkasan Keuangan</h3>
+      <div class="stats-grid" id="stats-summary"></div>
+    </div>
+    <div class="card">
+      <h3>Aktivitas Pelanggan</h3>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Nama</th>
+              <th>Total Pertemuan</th>
+              <th>Bulan Ini</th>
+              <th>Terakhir Hadir</th>
+              <th>Total Tagihan</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="activity-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- EDIT MODAL -->
+<div id="editModal" class="modal" style="display:none">
+  <div class="modal-content">
+    <span class="modal-close" onclick="closeEditModal()">&times;</span>
+    <h3 style="margin-bottom:16px">Edit Pelanggan</h3>
+    <form id="edit-form">
+      <input type="hidden" id="edit-id">
+      <div class="form-row">
+        <label>Nama Pelanggan</label>
+        <input type="text" id="edit-name" required>
+      </div>
+      <div class="form-row">
+        <label>Hari Les</label>
+        <div class="days-grid" id="edit-days">
+          <label class="day-check"><input type="checkbox" value="Senin"> Senin</label>
+          <label class="day-check"><input type="checkbox" value="Selasa"> Selasa</label>
+          <label class="day-check"><input type="checkbox" value="Rabu"> Rabu</label>
+          <label class="day-check"><input type="checkbox" value="Kamis"> Kamis</label>
+          <label class="day-check"><input type="checkbox" value="Jumat"> Jumat</label>
+          <label class="day-check"><input type="checkbox" value="Sabtu"> Sabtu</label>
+          <label class="day-check"><input type="checkbox" value="Minggu"> Minggu</label>
+        </div>
+      </div>
+      <div class="form-row time-row">
+        <div>
+          <label>Jam Mulai</label>
+          <input type="time" id="edit-start" required>
+        </div>
+        <div>
+          <label>Jam Selesai</label>
+          <input type="time" id="edit-end" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Harga per Pertemuan (Rp)</label>
+        <input type="number" id="edit-price" min="0" required>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:end;margin-top:8px">
+        <button type="button" class="btn-primary" style="background:var(--text-secondary)" onclick="closeEditModal()">Batal</button>
+        <button type="submit" class="btn-primary">Simpan Perubahan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"
+  }
+}
+</script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
