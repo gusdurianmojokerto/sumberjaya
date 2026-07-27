@@ -193,6 +193,44 @@ nav {
 
 .day-check input { display: none; }
 
+.day-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.day-times {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.day-times input[type="time"] {
+  width: 72px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.day-times input[type="time"]:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.day-block:has(.day-check input:checked) .day-check {
+  background: var(--primary);
+  color: white;
+}
+
 .btn-primary {
   background: var(--primary);
   color: white;

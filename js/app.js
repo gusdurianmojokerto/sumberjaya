@@ -10,6 +10,29 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 const MONTHS_INDO = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const DAY_HEADERS = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
 
+function getDayTime(customer, dayName) {
+  const dayTimes = customer.day_times || {};
+  if (dayTimes[dayName]) {
+    return { start: dayTimes[dayName].start, end: dayTimes[dayName].end };
+  }
+  return { start: customer.start_time, end: customer.end_time };
+}
+
+function getTimeDisplay(customer) {
+  const dayTimes = customer.day_times || {};
+  const days = customer.days || [];
+  if (days.length === 0) return '-';
+  const times = days.map(d => {
+    const t = dayTimes[d];
+    if (t && t.start && t.end) return `${t.start.slice(0,5)}-${t.end.slice(0,5)}`;
+    return null;
+  });
+  const unique = [...new Set(times.filter(Boolean))];
+  if (unique.length === 1) return unique[0];
+  if (unique.length > 1) return 'Bervariasi';
+  return `${customer.start_time?.slice(0,5)}-${customer.end_time?.slice(0,5)}`;
+}
+
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let calendarCustomers = [];
@@ -23,19 +46,19 @@ async function loadCustomers() {
   return data || [];
 }
 
-async function addCustomer(name, days, startTime, endTime, price) {
+async function addCustomer(name, days, dayTimes, price) {
   const { data, error } = await supabase
     .from('customers')
-    .insert({ name, days, start_time: startTime, end_time: endTime, price_per_session: price })
+    .insert({ name, days, day_times: dayTimes, start_time: '00:00', end_time: '00:00', price_per_session: price })
     .select();
   if (error) throw error;
   return data;
 }
 
-async function updateCustomer(id, name, days, startTime, endTime, price) {
+async function updateCustomer(id, name, days, dayTimes, price) {
   const { error } = await supabase
     .from('customers')
-    .update({ name, days, start_time: startTime, end_time: endTime, price_per_session: price })
+    .update({ name, days, day_times: dayTimes, start_time: '00:00', end_time: '00:00', price_per_session: price })
     .eq('id', id);
   if (error) throw error;
 }
@@ -54,23 +77,20 @@ function showCustomerForm() {
       <input type="text" id="cust-name" placeholder="Cth: Budi Santoso" required>
     </div>
     <div class="form-row">
-      <label>Hari Les</label>
+      <label>Hari & Jam Les</label>
       <div class="days-grid">
         ${['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'].map(d => `
-          <label class="day-check">
-            <input type="checkbox" value="${d}"> ${d}
-          </label>
+          <div class="day-block">
+            <label class="day-check">
+              <input type="checkbox" value="${d}" onchange="this.closest('.day-block').querySelector('.day-times').style.display=this.checked?'flex':'none'"> ${d}
+            </label>
+            <div class="day-times" style="display:none">
+              <input type="time" class="day-start" value="15:00">
+              <span>-</span>
+              <input type="time" class="day-end" value="17:00">
+            </div>
+          </div>
         `).join('')}
-      </div>
-    </div>
-    <div class="form-row time-row">
-      <div>
-        <label>Jam Mulai</label>
-        <input type="time" id="cust-start" value="15:00" required>
-      </div>
-      <div>
-        <label>Jam Selesai</label>
-        <input type="time" id="cust-end" value="17:00" required>
       </div>
     </div>
     <div class="form-row">
@@ -90,19 +110,23 @@ async function renderCustomers() {
       tbody.innerHTML = '<tr><td colspan="6" class="loading">Belum ada pelanggan. Tambahkan pelanggan baru di atas.</td></tr>';
       return;
     }
-    tbody.innerHTML = customers.map(c => `
+    tbody.innerHTML = customers.map(c => {
+      const timeDisplay = getTimeDisplay(c);
+      const timeHtml = timeDisplay === 'Bervariasi'
+        ? `<span title="${(c.days||[]).map(d => { const t=getDayTime(c,d); return d+': '+t.start?.slice(0,5)+'-'+t.end?.slice(0,5); }).join('\n')}" style="cursor:help;border-bottom:1px dotted var(--text-muted)">Bervariasi &#9432;</span>`
+        : timeDisplay;
+      return `
       <tr>
         <td>${c.name}</td>
         <td>${(c.days || []).join(', ')}</td>
-        <td>${c.start_time?.slice(0,5)}</td>
-        <td>${c.end_time?.slice(0,5)}</td>
+        <td colspan="2">${timeHtml}</td>
         <td>Rp ${Number(c.price_per_session).toLocaleString('id-ID')}</td>
         <td class="actions">
           <button class="btn-primary btn-sm" style="background:var(--warning);color:white" onclick="showEditModal('${c.id}')">Edit</button>
           <button class="btn-danger btn-sm" onclick="deleteCustomerHandler('${c.id}')">Hapus</button>
         </td>
       </tr>
-    `).join('');
+    `}).join('');
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="6" class="loading error">Gagal memuat: ${err.message}</td></tr>`;
   }
@@ -125,18 +149,26 @@ function setupCustomerForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('cust-name').value.trim();
-    const days = [...document.querySelectorAll('#customer-form .days-grid input:checked')].map(cb => cb.value);
-    const startTime = document.getElementById('cust-start').value;
-    const endTime = document.getElementById('cust-end').value;
     const price = parseInt(document.getElementById('cust-price').value);
+    const blocks = document.querySelectorAll('#customer-form .day-block');
+    const days = [];
+    const dayTimes = {};
+    blocks.forEach(b => {
+      const cb = b.querySelector('input[type="checkbox"]');
+      if (!cb.checked) return;
+      days.push(cb.value);
+      const start = b.querySelector('.day-start').value;
+      const end = b.querySelector('.day-end').value;
+      if (start && end) dayTimes[cb.value] = { start, end };
+    });
 
     if (!name) return alert('Nama pelanggan harus diisi');
     if (days.length === 0) return alert('Pilih minimal satu hari');
-    if (!startTime || !endTime) return alert('Jam harus diisi');
+    if (Object.keys(dayTimes).length === 0) return alert('Jam harus diisi untuk hari yang dipilih');
     if (!price || price <= 0) return alert('Harga harus diisi dengan benar');
 
     try {
-      await addCustomer(name, days, startTime, endTime, price);
+      await addCustomer(name, days, dayTimes, price);
       form.reset();
       showCustomerForm();
       await renderCustomers();
@@ -156,14 +188,28 @@ window.showEditModal = async function(id) {
 
   document.getElementById('edit-id').value = customer.id;
   document.getElementById('edit-name').value = customer.name;
-  document.getElementById('edit-start').value = customer.start_time?.slice(0,5);
-  document.getElementById('edit-end').value = customer.end_time?.slice(0,5);
   document.getElementById('edit-price').value = customer.price_per_session;
 
-  const checkboxes = document.querySelectorAll('#edit-days input[type="checkbox"]');
-  checkboxes.forEach(cb => {
-    cb.checked = (customer.days || []).includes(cb.value);
-  });
+  const dayTimes = customer.day_times || {};
+  const editDays = document.getElementById('edit-days');
+  editDays.innerHTML = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'].map(d => {
+    const checked = (customer.days || []).includes(d);
+    const t = dayTimes[d] || {};
+    const start = t.start || customer.start_time?.slice(0,5) || '15:00';
+    const end = t.end || customer.end_time?.slice(0,5) || '17:00';
+    return `
+      <div class="day-block">
+        <label class="day-check">
+          <input type="checkbox" value="${d}" ${checked ? 'checked' : ''} onchange="this.closest('.day-block').querySelector('.day-times').style.display=this.checked?'flex':'none'"> ${d}
+        </label>
+        <div class="day-times" style="display:${checked ? 'flex' : 'none'}">
+          <input type="time" class="day-start" value="${start}">
+          <span>-</span>
+          <input type="time" class="day-end" value="${end}">
+        </div>
+      </div>
+    `;
+  }).join('');
 
   document.getElementById('editModal').style.display = 'flex';
 };
@@ -178,18 +224,27 @@ function setupEditForm() {
     e.preventDefault();
     const id = document.getElementById('edit-id').value;
     const name = document.getElementById('edit-name').value.trim();
-    const days = [...document.querySelectorAll('#edit-days input:checked')].map(cb => cb.value);
-    const startTime = document.getElementById('edit-start').value;
-    const endTime = document.getElementById('edit-end').value;
     const price = parseInt(document.getElementById('edit-price').value);
+
+    const blocks = document.querySelectorAll('#edit-days .day-block');
+    const days = [];
+    const dayTimes = {};
+    blocks.forEach(b => {
+      const cb = b.querySelector('input[type="checkbox"]');
+      if (!cb.checked) return;
+      days.push(cb.value);
+      const start = b.querySelector('.day-start').value;
+      const end = b.querySelector('.day-end').value;
+      if (start && end) dayTimes[cb.value] = { start, end };
+    });
 
     if (!name) return alert('Nama harus diisi');
     if (days.length === 0) return alert('Pilih minimal satu hari');
-    if (!startTime || !endTime) return alert('Jam harus diisi');
+    if (Object.keys(dayTimes).length === 0) return alert('Jam harus diisi');
     if (!price || price <= 0) return alert('Harga harus diisi');
 
     try {
-      await updateCustomer(id, name, days, startTime, endTime, price);
+      await updateCustomer(id, name, days, dayTimes, price);
       closeEditModal();
       await renderCustomers();
       alert('Data pelanggan berhasil diperbarui!');
@@ -372,11 +427,12 @@ window.generateReceipt = async function() {
   const sessionsHtml = hadirSessions.map(a => {
     const d = new Date(a.date + 'T00:00:00');
     const dayName = dayNames[d.getDay()];
+    const t = getDayTime(customer, dayName);
     return `
       <tr>
         <td>${a.date}</td>
         <td>${dayName}</td>
-        <td>${customer.start_time?.slice(0,5)} - ${customer.end_time?.slice(0,5)}</td>
+        <td>${t.start?.slice(0,5)} - ${t.end?.slice(0,5)}</td>
         <td>Rp ${Number(customer.price_per_session).toLocaleString('id-ID')}</td>
       </tr>
     `;
@@ -392,7 +448,7 @@ window.generateReceipt = async function() {
         <table class="receipt-info">
           <tr><td>Nama Siswa</td><td>: <strong>${customer.name}</strong></td></tr>
           <tr><td>Periode</td><td>: <strong>${monthName}</strong></td></tr>
-          <tr><td>Jam Les</td><td>: ${customer.start_time?.slice(0,5)} - ${customer.end_time?.slice(0,5)}</td></tr>
+          <tr><td>Jam Les</td><td>: ${getTimeDisplay(customer)}</td></tr>
           <tr><td>Harga/Sesi</td><td>: Rp ${Number(customer.price_per_session).toLocaleString('id-ID')}</td></tr>
         </table>
         <table class="receipt-sessions">

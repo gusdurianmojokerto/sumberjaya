@@ -41,8 +41,7 @@
             <tr>
               <th>Nama</th>
               <th>Hari</th>
-              <th>Jam Mulai</th>
-              <th>Jam Selesai</th>
+              <th colspan="2">Jam</th>
               <th>Harga/Sesi</th>
               <th>Aksi</th>
             </tr>
@@ -145,26 +144,8 @@
         <input type="text" id="edit-name" required>
       </div>
       <div class="form-row">
-        <label>Hari Les</label>
-        <div class="days-grid" id="edit-days">
-          <label class="day-check"><input type="checkbox" value="Senin"> Senin</label>
-          <label class="day-check"><input type="checkbox" value="Selasa"> Selasa</label>
-          <label class="day-check"><input type="checkbox" value="Rabu"> Rabu</label>
-          <label class="day-check"><input type="checkbox" value="Kamis"> Kamis</label>
-          <label class="day-check"><input type="checkbox" value="Jumat"> Jumat</label>
-          <label class="day-check"><input type="checkbox" value="Sabtu"> Sabtu</label>
-          <label class="day-check"><input type="checkbox" value="Minggu"> Minggu</label>
-        </div>
-      </div>
-      <div class="form-row time-row">
-        <div>
-          <label>Jam Mulai</label>
-          <input type="time" id="edit-start" required>
-        </div>
-        <div>
-          <label>Jam Selesai</label>
-          <input type="time" id="edit-end" required>
-        </div>
+        <label>Hari & Jam Les</label>
+        <div class="days-grid" id="edit-days"></div>
       </div>
       <div class="form-row">
         <label>Harga per Pertemuan (Rp)</label>
