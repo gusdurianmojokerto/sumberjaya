@@ -577,27 +577,15 @@ window.downloadReceiptPNG = async function() {
 
 // ============ MODULES ============
 
-const JILID_ICONS = {
-  1: '<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8"/><path d="M8 11h6"/></svg>',
-  2: '<svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
-  3: '<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
-  4: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>'
-};
-
 function renderModules() {
   const grid = document.getElementById('modules-grid');
   if (!grid) return;
 
   grid.innerHTML = MODULES_DATA.map(m => {
-    const icon = JILID_ICONS[m.jilid];
     return `
       <div class="jilid-card ${m.class}" data-jilid="${m.jilid}" onclick="showPertemuan(${m.jilid})">
-        <div class="jilid-card-header">
-          <div class="jilid-icon">${icon}</div>
-          <div class="jilid-info">
-            <h4>Jilid ${m.jilid}</h4>
-            <div class="jilid-sub">${m.title}</div>
-          </div>
+        <div class="jilid-card-cover">
+          <img src="img/covers/jilid${m.jilid}.svg" alt="Jilid ${m.jilid}" loading="lazy">
         </div>
         <div class="jilid-card-body">
           <div class="jilid-topics">
