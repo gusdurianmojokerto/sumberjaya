@@ -577,42 +577,95 @@ window.downloadReceiptPNG = async function() {
 
 // ============ MODULES ============
 
+const JILID_ICONS = {
+  1: '<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8"/><path d="M8 11h6"/></svg>',
+  2: '<svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
+  3: '<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  4: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>'
+};
+
+const COLORS_CLASS = { 1: 'c1', 2: 'c2', 3: 'c3', 4: 'c4' };
+
 const MODULES_DATA = [
   {
-    jilid: 1,
-    icon: '🌈',
-    title: 'Dasar & Perkenalan',
-    color: 'jilid1',
-    pertemuan: '1–12',
+    jilid: 1, title: 'Dasar & Perkenalan', class: 'c1',
+    range: 'Pertemuan 1–12', desc: 'Membangun fondasi bahasa Inggris dasar melalui salam, abjad, angka, dan pengenalan diri.',
     topics: ['Greetings','Introduction','Alphabet','Numbers','Colors','Shapes','Classroom Objects','Commands','Days','Family','Body Parts','Five Senses'],
-    highlight: ['Greetings','Alphabet','Numbers','Colors']
+    core: ['Greetings','Alphabet','Numbers','Colors'],
+    pertemuan: [
+      { num:1, title:'Greetings', tujuan:'Siswa memahami dan menggunakan materi dalam kalimat sederhana.', kosakata:'Hello, Hi, Good Morning', ekspresi:'Hello! / Good morning!', grammar:'Penggunaan "This is…", "I am…", atau pola sederhana sesuai materi.', aktivitas:'Siswa menyapa guru dan teman.', latihan:'5 soal mencocokkan gambar, 5 soal membaca, 5 soal speaking.', pr:'Menulis 5 salam.' },
+      { num:2, title:'Introduction', tujuan:'Siswa memahami dan menggunakan materi dalam kalimat sederhana.', kosakata:'My name is…, I am…', ekspresi:'What is your name?', grammar:'Penggunaan "This is…", "I am…", atau pola sederhana sesuai materi.', aktivitas:'Perkenalan berpasangan.', latihan:'5 soal mencocokkan gambar, 5 soal membaca, 5 soal speaking.', pr:'Perkenalkan diri ke keluarga.' },
+      { num:3, title:'Alphabet', tujuan:'Siswa memahami dan menggunakan materi dalam kalimat sederhana.', kosakata:'A–Z', ekspresi:'Spell your name.', grammar:'Penggunaan "This is…", "I am…", atau pola sederhana sesuai materi.', aktivitas:'Spelling game.', latihan:'5 soal mencocokkan gambar, 5 soal membaca, 5 soal speaking.', pr:'Menulis alfabet.' },
+      { num:4, title:'Numbers', tujuan:'Siswa memahami dan menggunakan materi dalam kalimat sederhana.', kosakata:'1–20', ekspresi:'How many?', grammar:'Penggunaan "This is…", "I am…", atau pola sederhana sesuai materi.', aktivitas:'Counting objects.', latihan:'5 soal mencocokkan gambar, 5 soal membaca, 5 soal speaking.', pr:'Hitung benda di rumah.' },
+      { num:5, title:'Colors', tujuan:'Siswa memahami dan menggunakan materi dalam kalimat sederhana.', kosakata:'Red, Blue, Green, Yellow, Black, White', ekspresi:'What color is it?', grammar:'Penggunaan "This is…", "I am…", atau pola sederhana sesuai materi.', aktivitas:'Color hunt.', latihan:'5 soal mencocokkan gambar, 5 soal membaca, 5 soal speaking.', pr:'Warnai sesuai instruksi.' },
+      { num:6, title:'Shapes', tujuan:'Siswa memahami dan menggunakan materi dalam kalimat sederhana.', kosakata:'Circle, Square, Triangle, Rectangle', ekspresi:'It is a circle.', grammar:'Penggunaan "This is…", "I am…", atau pola sederhana sesuai materi.', aktivitas:'Shape matching.', latihan:'5 soal mencocokkan gambar, 5 soal membaca, 5 soal speaking.', pr:'Gambar 5 bentuk.' },
+      { num:7, title:'Classroom Objects', tujuan:'Siswa memahami dan menggunakan materi dalam kalimat sederhana.', kosakata:'Book, Pencil, Ruler, Eraser, Bag', ekspresi:'This is a book.', grammar:'Penggunaan "This is…", "I am…", atau pola sederhana sesuai materi.', aktivitas:'Find the object.', latihan:'5 soal mencocokkan gambar, 5 soal membaca, 5 soal speaking.', pr:'Label benda.' },
+      { num:8, title:'Classroom Commands', tujuan:'Siswa memahami dan menggunakan materi dalam kalimat sederhana.', kosakata:'Sit down, Stand up, Open, Close, Listen', ekspresi:'Open your book.', grammar:'Penggunaan "This is…", "I am…", atau pola sederhana sesuai materi.', aktivitas:'Simon Says.', latihan:'5 soal mencocokkan gambar, 5 soal membaca, 5 soal speaking.', pr:'Praktik di rumah.' },
+      { num:9, title:'Days', tujuan:'Siswa memahami dan menggunakan materi dalam kalimat sederhana.', kosakata:'Monday–Sunday', ekspresi:'What day is today?', grammar:'Penggunaan "This is…", "I am…", atau pola sederhana sesuai materi.', aktivitas:'Calendar game.', latihan:'5 soal mencocokkan gambar, 5 soal membaca, 5 soal speaking.', pr:'Hafalkan hari.' },
+      { num:10, title:'Family', tujuan:'Siswa memahami dan menggunakan materi dalam kalimat sederhana.', kosakata:'Father, Mother, Brother, Sister, Baby', ekspresi:'This is my mother.', grammar:'Penggunaan "This is…", "I am…", atau pola sederhana sesuai materi.', aktivitas:'Family tree.', latihan:'5 soal mencocokkan gambar, 5 soal membaca, 5 soal speaking.', pr:'Gambar keluarga.' },
+      { num:11, title:'Body Parts', tujuan:'Siswa memahami dan menggunakan materi dalam kalimat sederhana.', kosakata:'Head, Eyes, Nose, Mouth, Ears, Hands', ekspresi:'Touch your nose.', grammar:'Penggunaan "This is…", "I am…", atau pola sederhana sesuai materi.', aktivitas:'Head Shoulders game.', latihan:'5 soal mencocokkan gambar, 5 soal membaca, 5 soal speaking.', pr:'Label tubuh.' },
+      { num:12, title:'Five Senses & Review', tujuan:'Siswa memahami dan menggunakan materi dalam kalimat sederhana.', kosakata:'See, Hear, Smell, Taste, Touch', ekspresi:'I can see.', grammar:'Penggunaan "This is…", "I am…", atau pola sederhana sesuai materi.', aktivitas:'Quiz & Speaking Test.', latihan:'5 soal mencocokkan gambar, 5 soal membaca, 5 soal speaking.', pr:'Review.' }
+    ]
   },
   {
-    jilid: 2,
-    icon: '🐾',
-    title: 'Hewan, Makanan & Alam',
-    color: 'jilid2',
-    pertemuan: '13–24',
-    topics: ['Animals','Wild & Farm Animals','Food','Drinks','Fruits','Vegetables','Likes & Dislikes','Clothes','Weather','Seasons','Review','Mid Test'],
-    highlight: ['Animals','Food','Fruits','Weather']
+    jilid: 2, title: 'Hewan, Makanan & Alam', class: 'c2',
+    range: 'Pertemuan 13–24', desc: 'Memperluas kosakata tematik seputar hewan, makanan, cuaca, dan pakaian dengan pola kalimat sederhana.',
+    topics: ['Animals','Wild & Farm','Food','Drinks','Fruits','Vegetables','Likes/Dislikes','Clothes','Weather','Seasons','Review','Mid Test'],
+    core: ['Animals','Food','Fruits','Weather'],
+    pertemuan: [
+      { num:13, title:'Animals', tujuan:'Siswa mampu menggunakan kosakata dan kalimat sederhana sesuai tema.', kosakata:'Cat, Dog, Bird, Fish', ekspresi:'It is a cat.', grammar:'I like…, I don\'t like…, It is…, Can I… sesuai konteks.', aktivitas:'Animal guessing.', latihan:'Membaca, mencocokkan gambar, speaking, dan writing sederhana.', pr:'Hafalkan 10 nama hewan.' },
+      { num:14, title:'Wild & Farm Animals', tujuan:'Siswa mampu menggunakan kosakata dan kalimat sederhana sesuai tema.', kosakata:'Lion, Tiger, Cow, Goat', ekspresi:'It lives on a farm.', grammar:'I like…, I don\'t like…, It is…, Can I… sesuai konteks.', aktivitas:'Sorting game.', latihan:'Membaca, mencocokkan gambar, speaking, dan writing sederhana.', pr:'Kelompokkan hewan.' },
+      { num:15, title:'Food', tujuan:'Siswa mampu menggunakan kosakata dan kalimat sederhana sesuai tema.', kosakata:'Rice, Bread, Milk, Egg, Noodle', ekspresi:'I like bread.', grammar:'I like…, I don\'t like…, It is…, Can I… sesuai konteks.', aktivitas:'Food flashcards.', latihan:'Membaca, mencocokkan gambar, speaking, dan writing sederhana.', pr:'Tulis makanan favorit.' },
+      { num:16, title:'Drinks', tujuan:'Siswa mampu menggunakan kosakata dan kalimat sederhana sesuai tema.', kosakata:'Water, Juice, Tea, Coffee, Milk', ekspresi:'Can I have water?', grammar:'I like…, I don\'t like…, It is…, Can I… sesuai konteks.', aktivitas:'Role play.', latihan:'Membaca, mencocokkan gambar, speaking, dan writing sederhana.', pr:'Kosakata minuman.' },
+      { num:17, title:'Fruits', tujuan:'Siswa mampu menggunakan kosakata dan kalimat sederhana sesuai tema.', kosakata:'Apple, Banana, Orange, Grape, Mango', ekspresi:'I like apples.', grammar:'I like…, I don\'t like…, It is…, Can I… sesuai konteks.', aktivitas:'Fruit market.', latihan:'Membaca, mencocokkan gambar, speaking, dan writing sederhana.', pr:'Gambar buah.' },
+      { num:18, title:'Vegetables', tujuan:'Siswa mampu menggunakan kosakata dan kalimat sederhana sesuai tema.', kosakata:'Carrot, Tomato, Onion, Cabbage, Spinach', ekspresi:'I don\'t like onions.', grammar:'I like…, I don\'t like…, It is…, Can I… sesuai konteks.', aktivitas:'Matching.', latihan:'Membaca, mencocokkan gambar, speaking, dan writing sederhana.', pr:'Nama sayuran.' },
+      { num:19, title:'Likes & Dislikes', tujuan:'Siswa mampu menggunakan kosakata dan kalimat sederhana sesuai tema.', kosakata:'Like / Don\'t like, Love, Hate', ekspresi:'Do you like…?', grammar:'I like…, I don\'t like…, It is…, Can I… sesuai konteks.', aktivitas:'Interview friends.', latihan:'Membaca, mencocokkan gambar, speaking, dan writing sederhana.', pr:'5 kalimat.' },
+      { num:20, title:'Clothes', tujuan:'Siswa mampu menggunakan kosakata dan kalimat sederhana sesuai tema.', kosakata:'Shirt, Pants, Shoes, Hat, Socks', ekspresi:'I\'m wearing…', grammar:'I like…, I don\'t like…, It is…, Can I… sesuai konteks.', aktivitas:'Dress-up game.', latihan:'Membaca, mencocokkan gambar, speaking, dan writing sederhana.', pr:'Label pakaian.' },
+      { num:21, title:'Weather', tujuan:'Siswa mampu menggunakan kosakata dan kalimat sederhana sesuai tema.', kosakata:'Sunny, Rainy, Cloudy, Windy, Hot', ekspresi:'How\'s the weather?', grammar:'I like…, I don\'t like…, It is…, Can I… sesuai konteks.', aktivitas:'Weather chart.', latihan:'Membaca, mencocokkan gambar, speaking, dan writing sederhana.', pr:'Cuaca hari ini.' },
+      { num:22, title:'Seasons', tujuan:'Siswa mampu menggunakan kosakata dan kalimat sederhana sesuai tema.', kosakata:'Spring, Summer, Autumn, Winter', ekspresi:'My favorite season is…', grammar:'I like…, I don\'t like…, It is…, Can I… sesuai konteks.', aktivitas:'Picture talk.', latihan:'Membaca, mencocokkan gambar, speaking, dan writing sederhana.', pr:'4 musim.' },
+      { num:23, title:'Review', tujuan:'Siswa mampu menggunakan kosakata dan kalimat sederhana sesuai tema.', kosakata:'Animals, Food, Clothes, Weather', ekspresi:'Review dialogue.', grammar:'I like…, I don\'t like…, It is…, Can I… sesuai konteks.', aktivitas:'Quiz game.', latihan:'Membaca, mencocokkan gambar, speaking, dan writing sederhana.', pr:'Belajar ulang.' },
+      { num:24, title:'Mid Test', tujuan:'Siswa mampu menggunakan kosakata dan kalimat sederhana sesuai tema.', kosakata:'All previous topics (Jilid 1–2)', ekspresi:'Speaking & written test.', grammar:'I like…, I don\'t like…, It is…, Can I… sesuai konteks.', aktivitas:'Evaluasi.', latihan:'Membaca, mencocokkan gambar, speaking, dan writing sederhana.', pr:'—' }
+    ]
   },
   {
-    jilid: 3,
-    icon: '🏠',
-    title: 'Rumah & Kehidupan Sehari-hari',
-    color: 'jilid3',
-    pertemuan: '25–36',
-    topics: ['My House','Rooms','Furniture','Prepositions','Daily Activities','Time','Morning–Night','Simple Routine','Transportation','Places in Town','Jobs','Review'],
-    highlight: ['My House','Daily Activities','Time','Transportation']
+    jilid: 3, title: 'Rumah & Kehidupan Sehari-hari', class: 'c3',
+    range: 'Pertemuan 25–36', desc: 'Mempelajari kosakata rumah, rutinitas harian, waktu, transportasi, dan profesi.',
+    topics: ['My House','Rooms','Furniture','Prepositions','Daily Activities','Time','Morning–Night','Simple Routine','Transportation','Places','Jobs','Review'],
+    core: ['My House','Daily Activities','Time','Transportation'],
+    pertemuan: [
+      { num:25, title:'My House', tujuan:'Siswa mampu menggunakan kosakata dan pola kalimat sederhana sesuai tema.', kosakata:'House, Home, Door, Window, Garden', ekspresi:'This is my house.', grammar:'This is…, There is…, I go…, penggunaan preposition sesuai konteks.', aktivitas:'Picture discussion.', latihan:'Reading, speaking, writing, dan mencocokkan gambar.', pr:'Gambar rumah.' },
+      { num:26, title:'Rooms', tujuan:'Siswa mampu menggunakan kosakata dan pola kalimat sederhana sesuai tema.', kosakata:'Bedroom, Kitchen, Bathroom, Living Room', ekspresi:'This is the bedroom.', grammar:'This is…, There is…, I go…, penggunaan preposition sesuai konteks.', aktivitas:'Label rooms.', latihan:'Reading, speaking, writing, dan mencocokkan gambar.', pr:'Hafalkan kosakata.' },
+      { num:27, title:'Furniture', tujuan:'Siswa mampu menggunakan kosakata dan pola kalimat sederhana sesuai tema.', kosakata:'Table, Chair, Bed, Cupboard, Shelf', ekspresi:'There is a table.', grammar:'This is…, There is…, I go…, penggunaan preposition sesuai konteks.', aktivitas:'Matching game.', latihan:'Reading, speaking, writing, dan mencocokkan gambar.', pr:'Menulis 5 kalimat.' },
+      { num:28, title:'Prepositions', tujuan:'Siswa mampu menggunakan kosakata dan pola kalimat sederhana sesuai tema.', kosakata:'In, On, Under, Behind, Next to', ekspresi:'The cat is under the table.', grammar:'This is…, There is…, I go…, penggunaan preposition sesuai konteks.', aktivitas:'Object hunt.', latihan:'Reading, speaking, writing, dan mencocokkan gambar.', pr:'Latihan posisi benda.' },
+      { num:29, title:'Daily Activities', tujuan:'Siswa mampu menggunakan kosakata dan pola kalimat sederhana sesuai tema.', kosakata:'Wake up, Brush teeth, Take a bath, Eat', ekspresi:'I wake up at six.', grammar:'This is…, There is…, I go…, penggunaan preposition sesuai konteks.', aktivitas:'Routine cards.', latihan:'Reading, speaking, writing, dan mencocokkan gambar.', pr:'Tulis rutinitas.' },
+      { num:30, title:'Time', tujuan:'Siswa mampu menggunakan kosakata dan pola kalimat sederhana sesuai tema.', kosakata:'o\'clock, Half past, Quarter', ekspresi:'What time is it?', grammar:'This is…, There is…, I go…, penggunaan preposition sesuai konteks.', aktivitas:'Clock game.', latihan:'Reading, speaking, writing, dan mencocokkan gambar.', pr:'Membaca jam.' },
+      { num:31, title:'Morning – Night', tujuan:'Siswa mampu menggunakan kosakata dan pola kalimat sederhana sesuai tema.', kosakata:'Morning, Afternoon, Evening, Night', ekspresi:'Good evening.', grammar:'This is…, There is…, I go…, penggunaan preposition sesuai konteks.', aktivitas:'Sequence game.', latihan:'Reading, speaking, writing, dan mencocokkan gambar.', pr:'Urutkan kegiatan.' },
+      { num:32, title:'Simple Routine', tujuan:'Siswa mampu menggunakan kosakata dan pola kalimat sederhana sesuai tema.', kosakata:'First, Then, After that, Finally', ekspresi:'I go to school.', grammar:'This is…, There is…, I go…, penggunaan preposition sesuai konteks.', aktivitas:'Role play.', latihan:'Reading, speaking, writing, dan mencocokkan gambar.', pr:'Ceritakan rutinitas.' },
+      { num:33, title:'Transportation', tujuan:'Siswa mampu menggunakan kosakata dan pola kalimat sederhana sesuai tema.', kosakata:'Car, Bus, Train, Bicycle, Motorcycle', ekspresi:'I go by bus.', grammar:'This is…, There is…, I go…, penggunaan preposition sesuai konteks.', aktivitas:'Transport bingo.', latihan:'Reading, speaking, writing, dan mencocokkan gambar.', pr:'Kosakata kendaraan.' },
+      { num:34, title:'Places in Town', tujuan:'Siswa mampu menggunakan kosakata dan pola kalimat sederhana sesuai tema.', kosakata:'School, Hospital, Market, Park, Library', ekspresi:'Where is the school?', grammar:'This is…, There is…, I go…, penggunaan preposition sesuai konteks.', aktivitas:'Map game.', latihan:'Reading, speaking, writing, dan mencocokkan gambar.', pr:'Gambar peta sederhana.' },
+      { num:35, title:'Jobs', tujuan:'Siswa mampu menggunakan kosakata dan pola kalimat sederhana sesuai tema.', kosakata:'Teacher, Doctor, Police, Farmer, Chef', ekspresi:'He is a doctor.', grammar:'This is…, There is…, I go…, penggunaan preposition sesuai konteks.', aktivitas:'Guess the job.', latihan:'Reading, speaking, writing, dan mencocokkan gambar.', pr:'5 profesi.' },
+      { num:36, title:'Review', tujuan:'Siswa mampu menggunakan kosakata dan pola kalimat sederhana sesuai tema.', kosakata:'House, Routine, Places, Jobs', ekspresi:'Conversation review.', grammar:'This is…, There is…, I go…, penggunaan preposition sesuai konteks.', aktivitas:'Quiz & speaking.', latihan:'Reading, speaking, writing, dan mencocokkan gambar.', pr:'Belajar ulang.' }
+    ]
   },
   {
-    jilid: 4,
-    icon: '⭐',
-    title: 'Tata Bahasa & Percakapan',
-    color: 'jilid4',
-    pertemuan: '37–48',
-    topics: ['Opposites','Adjectives','Feelings','Review','Simple Sentences','There is / There are','I Have / We Have','Can / Can\'t','Reading Practice','Conversation','Final Review','Final Test'],
-    highlight: ['Simple Sentences','There is / There are','Can / Can\'t','Conversation']
+    jilid: 4, title: 'Tata Bahasa & Percakapan', class: 'c4',
+    range: 'Pertemuan 37–48', desc: 'Penguasaan tata bahasa dasar, kalimat sederhana, percakapan, dan ujian akhir.',
+    topics: ['Opposites','Adjectives','Feelings','Review','Simple Sentences','There is/are','I Have / We Have','Can / Can\'t','Reading','Conversation','Final Review','Final Test'],
+    core: ['Simple Sentences','There is/are','Can / Can\'t','Conversation'],
+    pertemuan: [
+      { num:37, title:'Opposites', tujuan:'Siswa mampu menggunakan bahasa Inggris sederhana secara percaya diri.', kosakata:'Big–Small, Tall–Short, Hot–Cold, Fast–Slow', ekspresi:'The elephant is big.', grammar:'Penerapan pola kalimat sederhana sesuai tema.', aktivitas:'Matching opposites.', latihan:'Reading, speaking, writing, dan permainan edukatif.', pr:'Cari 10 pasangan kata.' },
+      { num:38, title:'Adjectives', tujuan:'Siswa mampu menggunakan bahasa Inggris sederhana secara percaya diri.', kosakata:'Beautiful, Kind, Fast, Slow, Brave', ekspresi:'She is kind.', grammar:'Penerapan pola kalimat sederhana sesuai tema.', aktivitas:'Describe pictures.', latihan:'Reading, speaking, writing, dan permainan edukatif.', pr:'Buat 5 kalimat.' },
+      { num:39, title:'Feelings', tujuan:'Siswa mampu menggunakan bahasa Inggris sederhana secara percaya diri.', kosakata:'Happy, Sad, Angry, Tired, Scared', ekspresi:'How do you feel?', grammar:'Penerapan pola kalimat sederhana sesuai tema.', aktivitas:'Emotion cards.', latihan:'Reading, speaking, writing, dan permainan edukatif.', pr:'Tulis perasaan hari ini.' },
+      { num:40, title:'Review', tujuan:'Siswa mampu menggunakan bahasa Inggris sederhana secara percaya diri.', kosakata:'Adjectives & Feelings', ekspresi:'Speaking review.', grammar:'Penerapan pola kalimat sederhana sesuai tema.', aktivitas:'Quiz game.', latihan:'Reading, speaking, writing, dan permainan edukatif.', pr:'Belajar ulang.' },
+      { num:41, title:'Simple Sentences', tujuan:'Siswa mampu menggunakan bahasa Inggris sederhana secara percaya diri.', kosakata:'This is…, That is…, These are…', ekspresi:'This is my book.', grammar:'Penerapan pola kalimat sederhana sesuai tema.', aktivitas:'Sentence building.', latihan:'Reading, speaking, writing, dan permainan edukatif.', pr:'Menulis 10 kalimat.' },
+      { num:42, title:'There is / There are', tujuan:'Siswa mampu menggunakan bahasa Inggris sederhana secara percaya diri.', kosakata:'There is a cat, There are cats', ekspresi:'Describe pictures.', grammar:'Penerapan pola kalimat sederhana sesuai tema.', aktivitas:'Picture description.', latihan:'Reading, speaking, writing, dan permainan edukatif.', pr:'Latihan menulis.' },
+      { num:43, title:'I Have / We Have', tujuan:'Siswa mampu menggunakan bahasa Inggris sederhana secara percaya diri.', kosakata:'I have a pencil, We have books', ekspresi:'What do you have?', grammar:'Penerapan pola kalimat sederhana sesuai tema.', aktivitas:'Pair work.', latihan:'Reading, speaking, writing, dan permainan edukatif.', pr:'Daftar benda milikmu.' },
+      { num:44, title:'Can / Can\'t', tujuan:'Siswa mampu menggunakan bahasa Inggris sederhana secara percaya diri.', kosakata:'I can swim, I can\'t fly', ekspresi:'Can you…?', grammar:'Penerapan pola kalimat sederhana sesuai tema.', aktivitas:'Action game.', latihan:'Reading, speaking, writing, dan permainan edukatif.', pr:'5 kalimat.' },
+      { num:45, title:'Reading Practice', tujuan:'Siswa mampu menggunakan bahasa Inggris sederhana secara percaya diri.', kosakata:'Short stories, new vocabulary', ekspresi:'Read aloud.', grammar:'Penerapan pola kalimat sederhana sesuai tema.', aktivitas:'Reading race.', latihan:'Reading, speaking, writing, dan permainan edukatif.', pr:'Membaca di rumah.' },
+      { num:46, title:'Conversation', tujuan:'Siswa mampu menggunakan bahasa Inggris sederhana secara percaya diri.', kosakata:'Daily conversation phrases', ekspresi:'Role play.', grammar:'Penerapan pola kalimat sederhana sesuai tema.', aktivitas:'Dialog berpasangan.', latihan:'Reading, speaking, writing, dan permainan edukatif.', pr:'Latihan dialog.' },
+      { num:47, title:'Final Review', tujuan:'Siswa mampu menggunakan bahasa Inggris sederhana secara percaya diri.', kosakata:'All materials from Jilid 1–4', ekspresi:'Integrated practice.', grammar:'Penerapan pola kalimat sederhana sesuai tema.', aktivitas:'Games & speaking.', latihan:'Reading, speaking, writing, dan permainan edukatif.', pr:'Persiapan ujian.' },
+      { num:48, title:'Final Test', tujuan:'Siswa mampu menggunakan bahasa Inggris sederhana secara percaya diri.', kosakata:'Listening, Speaking, Reading, Writing', ekspresi:'Assessment.', grammar:'Penerapan pola kalimat sederhana sesuai tema.', aktivitas:'Evaluasi akhir.', latihan:'Reading, speaking, writing, dan permainan edukatif.', pr:'—' }
+    ]
   }
 ];
 
@@ -620,26 +673,105 @@ function renderModules() {
   const grid = document.getElementById('modules-grid');
   if (!grid) return;
 
-  grid.innerHTML = MODULES_DATA.map(m => `
-    <div class="module-card ${m.color}">
-      <div class="module-card-header">
-        <div class="module-icon">${m.icon}</div>
-        <h4>Jilid ${m.jilid}: ${m.title}</h4>
-        <div class="module-sub">Pertemuan ${m.pertemuan}</div>
-      </div>
-      <div class="module-card-body">
-        <div class="module-topics">
-          ${m.topics.map(t => `
-            <span class="module-topic ${m.highlight.includes(t) ? 'highlight' : ''}">${t}</span>
-          `).join('')}
+  grid.innerHTML = MODULES_DATA.map(m => {
+    const icon = JILID_ICONS[m.jilid];
+    return `
+      <div class="jilid-card ${m.class}" data-jilid="${m.jilid}" onclick="showPertemuan(${m.jilid})">
+        <div class="jilid-card-header">
+          <div class="jilid-icon">${icon}</div>
+          <div class="jilid-info">
+            <h4>Jilid ${m.jilid}</h4>
+            <div class="jilid-sub">${m.title}</div>
+          </div>
         </div>
-        <div class="module-meta">
-          <span><strong>${m.topics.length}</strong> topik</span>
-          <span>${m.jilid === 4 ? '🎓 Ujian Akhir' : '📖 ' + m.topics.length + ' pertemuan'}</span>
+        <div class="jilid-card-body">
+          <div class="jilid-topics">
+            ${m.topics.map(t => `
+              <span class="jilid-topic ${m.core.includes(t) ? 'core' : ''}">${t}</span>
+            `).join('')}
+          </div>
+          <div class="jilid-meta">
+            <span><strong>${m.pertemuan.length}</strong> pertemuan</span>
+            <span>${m.range}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function showPertemuan(jilid) {
+  const m = MODULES_DATA.find(x => x.jilid === jilid);
+  if (!m) return;
+
+  const section = document.getElementById('pertemuan-section');
+  const titleEl = document.getElementById('pertemuan-title');
+  const descEl = document.getElementById('pertemuan-desc');
+  const list = document.getElementById('pertemuan-list');
+
+  const colorNum = m.jilid;
+  const colors = { 1: '#2563eb', 2: '#16a34a', 3: '#d97706', 4: '#dc2626' };
+  const bgColors = { 1: '#1d4ed8', 2: '#15803d', 3: '#b45309', 4: '#b91c1c' };
+  const c = colors[colorNum];
+  const bg = bgColors[colorNum];
+
+  document.querySelectorAll('.jilid-card').forEach(el => el.classList.remove('active'));
+  const card = document.querySelector(`.jilid-card[data-jilid="${jilid}"]`);
+  if (card) card.classList.add('active');
+
+  titleEl.innerHTML = `<span style="background:${c}">${m.jilid}</span> Jilid ${m.jilid}: ${m.title}`;
+  descEl.textContent = m.desc;
+
+  list.innerHTML = m.pertemuan.map(p => `
+    <div class="pertemuan-item">
+      <div class="pertemuan-header" onclick="togglePertemuan(this)">
+        <div class="pertemuan-header-left">
+          <div class="pertemuan-num" style="background:${c}">${p.num}</div>
+          <span class="pertemuan-title">${p.title}</span>
+        </div>
+        <svg class="pertemuan-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      <div class="pertemuan-body">
+        <div class="pertemuan-details">
+          <span class="label">Tujuan</span>
+          <span class="value">${p.tujuan}</span>
+          <span class="label">Kosakata Inti</span>
+          <span class="value">${p.kosakata}</span>
+          <span class="label">Ekspresi</span>
+          <span class="value"><em>${p.ekspresi}</em></span>
+          <span class="label">Grammar</span>
+          <span class="value">${p.grammar}</span>
+          <span class="label">Aktivitas</span>
+          <span class="value">${p.aktivitas}</span>
+          <span class="label">Latihan</span>
+          <span class="value">${p.latihan}</span>
+          <span class="label">PR</span>
+          <span class="value">${p.pr}</span>
         </div>
       </div>
     </div>
   `).join('');
+
+  section.classList.add('active');
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function togglePertemuan(header) {
+  const body = header.nextElementSibling;
+  const arrow = header.querySelector('.pertemuan-arrow');
+  const isOpen = body.classList.contains('open');
+
+  document.querySelectorAll('.pertemuan-body.open').forEach(el => {
+    el.classList.remove('open');
+    el.previousElementSibling.querySelector('.pertemuan-arrow').classList.remove('open');
+  });
+
+  if (!isOpen) {
+    body.classList.add('open');
+    arrow.classList.add('open');
+  }
 }
 
 // ============ REPORTS / STATISTICS ============
