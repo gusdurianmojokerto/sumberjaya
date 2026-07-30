@@ -701,6 +701,10 @@ function togglePertemuan(header) {
   }
 }
 
+// Expose module functions to global for onclick handlers
+window.showPertemuan = showPertemuan;
+window.togglePertemuan = togglePertemuan;
+
 // ============ REPORTS / STATISTICS ============
 
 async function renderReports() {
