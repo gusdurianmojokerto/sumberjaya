@@ -6,5 +6,5 @@ const PORT = 3001;
 app.use(express.static(path.join(__dirname)));
 
 app.listen(PORT, () => {
-  console.log(`Sumber Jaya Private Course running at http://localhost:${PORT}`);
+  console.log(`NewSantara Private Course running at http://localhost:${PORT}`);
 });

@@ -441,7 +441,7 @@ window.generateReceipt = async function() {
   receiptDiv.innerHTML = `
     <div id="receipt-content">
       <div class="receipt-header">
-        <h2>Sumber Jaya Private Course</h2>
+        <h2>NewSantara Private Course</h2>
         <p>Bimbingan Belajar Profesional</p>
       </div>
       <div class="receipt-body">
@@ -498,7 +498,7 @@ window.downloadReceiptPNG = async function() {
       logging: false
     });
     const link = document.createElement('a');
-    link.download = `struk-sumber-jaya-${new Date().getTime()}.png`;
+    link.download = `struk-newsantara-${new Date().getTime()}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
   } catch (err) {
