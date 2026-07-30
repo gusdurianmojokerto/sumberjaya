@@ -575,6 +575,73 @@ window.downloadReceiptPNG = async function() {
   receipt.style.maxWidth = origMaxW;
 };
 
+// ============ MODULES ============
+
+const MODULES_DATA = [
+  {
+    jilid: 1,
+    icon: '🌈',
+    title: 'Dasar & Perkenalan',
+    color: 'jilid1',
+    pertemuan: '1–12',
+    topics: ['Greetings','Introduction','Alphabet','Numbers','Colors','Shapes','Classroom Objects','Commands','Days','Family','Body Parts','Five Senses'],
+    highlight: ['Greetings','Alphabet','Numbers','Colors']
+  },
+  {
+    jilid: 2,
+    icon: '🐾',
+    title: 'Hewan, Makanan & Alam',
+    color: 'jilid2',
+    pertemuan: '13–24',
+    topics: ['Animals','Wild & Farm Animals','Food','Drinks','Fruits','Vegetables','Likes & Dislikes','Clothes','Weather','Seasons','Review','Mid Test'],
+    highlight: ['Animals','Food','Fruits','Weather']
+  },
+  {
+    jilid: 3,
+    icon: '🏠',
+    title: 'Rumah & Kehidupan Sehari-hari',
+    color: 'jilid3',
+    pertemuan: '25–36',
+    topics: ['My House','Rooms','Furniture','Prepositions','Daily Activities','Time','Morning–Night','Simple Routine','Transportation','Places in Town','Jobs','Review'],
+    highlight: ['My House','Daily Activities','Time','Transportation']
+  },
+  {
+    jilid: 4,
+    icon: '⭐',
+    title: 'Tata Bahasa & Percakapan',
+    color: 'jilid4',
+    pertemuan: '37–48',
+    topics: ['Opposites','Adjectives','Feelings','Review','Simple Sentences','There is / There are','I Have / We Have','Can / Can\'t','Reading Practice','Conversation','Final Review','Final Test'],
+    highlight: ['Simple Sentences','There is / There are','Can / Can\'t','Conversation']
+  }
+];
+
+function renderModules() {
+  const grid = document.getElementById('modules-grid');
+  if (!grid) return;
+
+  grid.innerHTML = MODULES_DATA.map(m => `
+    <div class="module-card ${m.color}">
+      <div class="module-card-header">
+        <div class="module-icon">${m.icon}</div>
+        <h4>Jilid ${m.jilid}: ${m.title}</h4>
+        <div class="module-sub">Pertemuan ${m.pertemuan}</div>
+      </div>
+      <div class="module-card-body">
+        <div class="module-topics">
+          ${m.topics.map(t => `
+            <span class="module-topic ${m.highlight.includes(t) ? 'highlight' : ''}">${t}</span>
+          `).join('')}
+        </div>
+        <div class="module-meta">
+          <span><strong>${m.topics.length}</strong> topik</span>
+          <span>${m.jilid === 4 ? '🎓 Ujian Akhir' : '📖 ' + m.topics.length + ' pertemuan'}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
 // ============ REPORTS / STATISTICS ============
 
 async function renderReports() {
@@ -793,6 +860,7 @@ function switchTab(tabName) {
   document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.add('active');
 
   if (tabName === 'calendar') renderCalendar();
+  if (tabName === 'modules') renderModules();
   if (tabName === 'reports') renderReports();
 }
 

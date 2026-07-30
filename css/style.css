@@ -754,6 +754,98 @@ table tbody tr:last-child td { border-bottom: none; }
   max-height: 280px;
 }
 
+/* Module Styles */
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.module-card {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--card);
+  transition: all 0.25s;
+}
+
+.module-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.module-card-header {
+  padding: 20px 20px 16px;
+  position: relative;
+}
+
+.module-card-header .module-icon {
+  font-size: 2.2rem;
+  margin-bottom: 8px;
+}
+
+.module-card-header h4 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: white;
+  line-height: 1.3;
+}
+
+.module-card-header .module-sub {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.85);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.module-card-body {
+  padding: 16px 20px 20px;
+}
+
+.module-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.module-topic {
+  background: var(--bg);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.2px;
+  border: 1px solid var(--border);
+}
+
+.module-topic.highlight {
+  background: #eff6ff;
+  border-color: var(--primary-light);
+  color: var(--primary);
+}
+
+.module-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.module-meta strong {
+  color: var(--text-secondary);
+}
+
+/* Jilid color themes */
+.module-card.jilid1 .module-card-header { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+.module-card.jilid2 .module-card-header { background: linear-gradient(135deg, #16a34a, #15803d); }
+.module-card.jilid3 .module-card-header { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.module-card.jilid4 .module-card-header { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+
 @media (max-width: 1024px) {
   .cal-session { font-size: 0.65rem; }
 }
