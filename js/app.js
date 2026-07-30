@@ -585,7 +585,7 @@ function renderModules() {
     return `
       <div class="jilid-card ${m.class}" data-jilid="${m.jilid}" onclick="showPertemuan(${m.jilid})">
         <div class="jilid-card-cover">
-          <img src="img/covers/jilid${m.jilid}.svg" alt="Jilid ${m.jilid}" loading="lazy">
+          <img src="img/covers/jilid${m.jilid}.${m.jilid === 4 ? 'jpeg' : 'jfif'}" alt="Jilid ${m.jilid}" loading="lazy">
         </div>
         <div class="jilid-card-body">
           <div class="jilid-topics">
