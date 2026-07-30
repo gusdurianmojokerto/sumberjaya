@@ -193,6 +193,70 @@ nav {
 
 .day-check input { display: none; }
 
+/* Day Attendance Modal */
+.attendance-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+
+.attendance-item:last-child { border-bottom: none; }
+
+.attendance-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.attendance-info strong {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.attendance-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.attendance-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.att-btn {
+  padding: 10px 20px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  min-width: 80px;
+  text-align: center;
+}
+
+.att-btn:active { transform: scale(0.96); }
+
+.att-btn[data-action="hadir"].active {
+  background: #f0fdf4;
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.att-btn[data-action="alpha"].active {
+  background: #fef2f2;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 .day-block {
   display: flex;
   flex-direction: column;

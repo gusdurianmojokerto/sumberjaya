@@ -63,7 +63,7 @@
       <div id="calendar-grid" class="calendar-grid"></div>
     </div>
     <div class="card" style="font-size:0.85rem;color:var(--text-secondary)">
-      <p><strong>Keterangan:</strong> Klik nama pelanggan pada kalender untuk menandai <span style="color:var(--success)">Hadir</span> / <span style="color:var(--danger)">Alpha</span>.</p>
+      <p><strong>Keterangan:</strong> Klik tanggal pada kalender untuk membuka daftar absen <span style="color:var(--success)">Hadir</span> / <span style="color:var(--danger)">Alpha</span>.</p>
       <p>
         <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#e8f0fe;vertical-align:middle"></span> Belum diabsen &nbsp;
         <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#e6f4ea;vertical-align:middle"></span> Hadir &nbsp;
@@ -130,6 +130,16 @@
     </div>
   </section>
 
+</div>
+
+<!-- DAY ATTENDANCE MODAL -->
+<div id="dayAttendanceModal" class="modal" style="display:none">
+  <div class="modal-content">
+    <span class="modal-close" onclick="closeDayAttendance()">&times;</span>
+    <h3 style="margin-bottom:4px" id="day-attendance-date"></h3>
+    <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:16px" id="day-attendance-day"></p>
+    <div id="day-attendance-list"></div>
+  </div>
 </div>
 
 <!-- EDIT MODAL -->

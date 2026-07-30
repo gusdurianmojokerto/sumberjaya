@@ -256,7 +256,10 @@ function setupEditForm() {
 
 // Close modal on overlay click
 document.addEventListener('click', (e) => {
-  if (e.target.classList.contains('modal')) closeEditModal();
+  if (e.target.classList.contains('modal')) {
+    closeEditModal();
+    closeDayAttendance();
+  }
 });
 
 // ============ CALENDAR ============
@@ -308,14 +311,13 @@ async function renderCalendar() {
     const sessionsToday = calendarCustomers.filter(c => (c.days || []).includes(dayName));
     const attendanceToday = attendance.filter(a => a.date === dateStr);
 
-    let cellContent = `<div class="cal-day-number ${isToday ? 'today' : ''}">${d}</div>`;
+    let cellContent = `<div class="cal-day-number ${isToday ? 'today' : ''}" onclick="showDayAttendance('${dateStr}','${dayName}')">${d}</div>`;
 
     sessionsToday.forEach(c => {
       const att = attendanceToday.find(a => a.customer_id === c.id);
       const status = att ? att.status : null;
       cellContent += `
-        <div class="cal-session ${status ? (status === 'hadir' ? 'hadir' : 'alpha') : ''}"
-             onclick="toggleAttendance('${c.id}', '${dateStr}', '${c.name}', '${status || 'none'}')">
+        <div class="cal-session ${status ? (status === 'hadir' ? 'hadir' : 'alpha') : ''}">
           ${c.name}
           ${status ? (status === 'hadir' ? '✓' : '✗') : '○'}
         </div>
@@ -326,34 +328,98 @@ async function renderCalendar() {
   }
 }
 
-window.toggleAttendance = async function(customerId, date, customerName, currentStatus) {
-  const action = currentStatus === 'hadir' ? 'alpha' : 'hadir';
-  if (currentStatus === 'none') {
-    if (!confirm(`Tandai ${customerName} hadir pada ${date}?`)) return;
-  } else if (currentStatus === 'hadir') {
-    if (!confirm(`Ubah ${customerName} menjadi alpha pada ${date}?`)) return;
-  } else {
-    if (!confirm(`Ubah ${customerName} menjadi hadir pada ${date}?`)) return;
-  }
-
+async function doToggleAttendance(customerId, date, currentStatus, newStatus) {
   try {
-    if (currentStatus === 'none') {
+    if (currentStatus === 'none' || currentStatus === null) {
       await supabase.from('attendance').insert({
         customer_id: customerId,
         date: date,
-        status: 'hadir'
+        status: newStatus
       });
     } else {
       await supabase.from('attendance').upsert({
         customer_id: customerId,
         date: date,
-        status: action
+        status: newStatus
       }, { onConflict: 'customer_id, date' });
     }
     await renderCalendar();
   } catch (err) {
     alert('Gagal: ' + err.message);
   }
+}
+
+window.showDayAttendance = async function(dateStr, dayName) {
+  const sessions = calendarCustomers.filter(c => (c.days || []).includes(dayName));
+  if (sessions.length === 0) return;
+
+  const { data: attendance } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('date', dateStr);
+
+  const todayAtt = attendance || [];
+
+  const dateObj = new Date(dateStr + 'T00:00:00');
+  const formatted = `${dateObj.getDate()} ${MONTHS_INDO[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+
+  const modal = document.getElementById('dayAttendanceModal');
+  const list = document.getElementById('day-attendance-list');
+  list.innerHTML = sessions.map(c => {
+    const att = todayAtt.find(a => a.customer_id === c.id);
+    const status = att ? att.status : 'none';
+    const t = getDayTime(c, dayName);
+    return `
+      <div class="attendance-item" data-cid="${c.id}" data-status="${status}">
+        <div class="attendance-info">
+          <strong>${c.name}</strong>
+          <span class="attendance-time">${t.start?.slice(0,5)}-${t.end?.slice(0,5)}</span>
+        </div>
+        <div class="attendance-actions">
+          <button class="att-btn ${status === 'hadir' ? 'active' : ''}" data-action="hadir" onclick="attendanceAction('${c.id}','${dateStr}','${status}','hadir')">Hadir</button>
+          <button class="att-btn ${status === 'alpha' ? 'active' : ''}" data-action="alpha" onclick="attendanceAction('${c.id}','${dateStr}','${status}','alpha')">Alpha</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('day-attendance-date').textContent = formatted;
+  document.getElementById('day-attendance-day').textContent = dayName;
+  modal.style.display = 'flex';
+};
+
+window.attendanceAction = async function(customerId, date, currentStatus, newStatus) {
+  await doToggleAttendance(customerId, date, currentStatus, newStatus);
+  const { data: updatedAttendance } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('date', date);
+
+  const todayAtt = updatedAttendance || [];
+  const sessions = calendarCustomers.filter(c => (c.days || []).includes(DAY_HEADERS[new Date(date + 'T00:00:00').getDay()]));
+
+  const list = document.getElementById('day-attendance-list');
+  list.innerHTML = sessions.map(c => {
+    const att = todayAtt.find(a => a.customer_id === c.id);
+    const status = att ? att.status : 'none';
+    const t = getDayTime(c, DAY_HEADERS[new Date(date + 'T00:00:00').getDay()]);
+    return `
+      <div class="attendance-item" data-cid="${c.id}" data-status="${status}">
+        <div class="attendance-info">
+          <strong>${c.name}</strong>
+          <span class="attendance-time">${t.start?.slice(0,5)}-${t.end?.slice(0,5)}</span>
+        </div>
+        <div class="attendance-actions">
+          <button class="att-btn ${status === 'hadir' ? 'active' : ''}" data-action="hadir" onclick="attendanceAction('${c.id}','${date}','${status}','hadir')">Hadir</button>
+          <button class="att-btn ${status === 'alpha' ? 'active' : ''}" data-action="alpha" onclick="attendanceAction('${c.id}','${date}','${status}','alpha')">Alpha</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+};
+
+window.closeDayAttendance = function() {
+  document.getElementById('dayAttendanceModal').style.display = 'none';
 };
 
 window.prevMonth = function() {
