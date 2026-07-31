@@ -111,6 +111,41 @@
         <div class="pertemuan-list" id="pertemuan-list"></div>
       </div>
     </div>
+    <div class="card" style="margin-top:20px">
+      <h3>Generate Modul A4</h3>
+      <p style="color:var(--text-secondary);margin-bottom:16px">Buat lembar kerja A4 berisi materi, bacaan, dan latihan soal — cetak langsung untuk pegangan siswa.</p>
+      <div class="paper-controls">
+        <div class="form-row" style="grid-template-columns:1fr 1fr;margin-bottom:0">
+          <div>
+            <label>Pilih Jilid</label>
+            <select id="paper-jilid" onchange="updatePaperTopics()">
+              <option value="1">Jilid 1 — Dasar &amp; Perkenalan</option>
+              <option value="2">Jilid 2 — Hewan, Makanan &amp; Alam</option>
+              <option value="3">Jilid 3 — Rumah &amp; Kehidupan</option>
+              <option value="4">Jilid 4 — Tata Bahasa &amp; Percakapan</option>
+            </select>
+          </div>
+          <div>
+            <label>Pilih Tema</label>
+            <select id="paper-topic"></select>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="generatePaper()" id="paper-gen-btn" style="margin-top:12px">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Generate &amp; Cetak PDF
+        </button>
+      </div>
+      <div id="paper-result" style="display:none;margin-top:16px">
+        <div id="paper-content" class="paper-a4"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
+          <button class="btn-primary" onclick="printPaper()">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Cetak / Simpan PDF
+          </button>
+          <button class="btn btn-secondary" onclick="closePaper()">Tutup</button>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- TAB: REPORTS -->

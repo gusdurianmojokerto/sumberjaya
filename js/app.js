@@ -33,6 +33,26 @@ function getTimeDisplay(customer) {
   return `${customer.start_time?.slice(0,5)}-${customer.end_time?.slice(0,5)}`;
 }
 
+function getDayPrice(customer, dayName) {
+  const dayPrices = customer.day_prices || {};
+  if (dayPrices[dayName] != null) return Number(dayPrices[dayName]);
+  return Number(customer.price_per_session || 0);
+}
+
+function getPriceForDate(customer, dateStr) {
+  const dayName = DAY_HEADERS[new Date(dateStr + 'T00:00:00').getDay()];
+  return getDayPrice(customer, dayName);
+}
+
+function getPriceDisplay(customer) {
+  const days = customer.days || [];
+  if (days.length === 0) return 'Rp ' + Number(customer.price_per_session || 0).toLocaleString('id-ID');
+  const prices = days.map(d => getDayPrice(customer, d));
+  const unique = [...new Set(prices)];
+  if (unique.length === 1) return 'Rp ' + unique[0].toLocaleString('id-ID');
+  return 'Bervariasi';
+}
+
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let calendarCustomers = [];
@@ -46,19 +66,19 @@ async function loadCustomers() {
   return data || [];
 }
 
-async function addCustomer(name, days, dayTimes, price) {
+async function addCustomer(name, days, dayTimes, dayPrices, price) {
   const { data, error } = await supabase
     .from('customers')
-    .insert({ name, days, day_times: dayTimes, start_time: '00:00', end_time: '00:00', price_per_session: price })
+    .insert({ name, days, day_times: dayTimes, day_prices: dayPrices, start_time: '00:00', end_time: '00:00', price_per_session: price })
     .select();
   if (error) throw error;
   return data;
 }
 
-async function updateCustomer(id, name, days, dayTimes, price) {
+async function updateCustomer(id, name, days, dayTimes, dayPrices, price) {
   const { error } = await supabase
     .from('customers')
-    .update({ name, days, day_times: dayTimes, start_time: '00:00', end_time: '00:00', price_per_session: price })
+    .update({ name, days, day_times: dayTimes, day_prices: dayPrices, start_time: '00:00', end_time: '00:00', price_per_session: price })
     .eq('id', id);
   if (error) throw error;
 }
@@ -82,12 +102,13 @@ function showCustomerForm() {
         ${['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'].map(d => `
           <div class="day-block">
             <label class="day-check">
-              <input type="checkbox" value="${d}" onchange="this.closest('.day-block').querySelector('.day-times').style.display=this.checked?'flex':'none'"> ${d}
+              <input type="checkbox" value="${d}" onchange="const b=this.closest('.day-block');b.querySelector('.day-times').style.display=this.checked?'flex':'none';const gp=document.getElementById('cust-price');const dp=b.querySelector('.day-price');if(this.checked&&gp&&gp.value&&!dp.value)dp.value=gp.value;"> ${d}
             </label>
             <div class="day-times" style="display:none">
               <input type="time" class="day-start" value="15:00">
               <span>-</span>
               <input type="time" class="day-end" value="17:00">
+              <input type="number" class="day-price" placeholder="Harga" min="0">
             </div>
           </div>
         `).join('')}
@@ -115,12 +136,16 @@ async function renderCustomers() {
       const timeHtml = timeDisplay === 'Bervariasi'
         ? `<span title="${(c.days||[]).map(d => { const t=getDayTime(c,d); return d+': '+t.start?.slice(0,5)+'-'+t.end?.slice(0,5); }).join('\n')}" style="cursor:help;border-bottom:1px dotted var(--text-muted)">Bervariasi &#9432;</span>`
         : timeDisplay;
+      const priceDisplay = getPriceDisplay(c);
+      const priceHtml = priceDisplay === 'Bervariasi'
+        ? `<span title="${(c.days||[]).map(d => d+': Rp '+getDayPrice(c,d).toLocaleString('id-ID')).join('\n')}" style="cursor:help;border-bottom:1px dotted var(--text-muted)">Bervariasi &#9432;</span>`
+        : priceDisplay;
       return `
       <tr>
         <td>${c.name}</td>
         <td>${(c.days || []).join(', ')}</td>
         <td colspan="2">${timeHtml}</td>
-        <td>Rp ${Number(c.price_per_session).toLocaleString('id-ID')}</td>
+        <td>${priceHtml}</td>
         <td class="actions">
           <button class="btn-primary btn-sm" style="background:var(--warning);color:white" onclick="showEditModal('${c.id}')">Edit</button>
           <button class="btn-danger btn-sm" onclick="deleteCustomerHandler('${c.id}')">Hapus</button>
@@ -153,6 +178,7 @@ function setupCustomerForm() {
     const blocks = document.querySelectorAll('#customer-form .day-block');
     const days = [];
     const dayTimes = {};
+    const dayPrices = {};
     blocks.forEach(b => {
       const cb = b.querySelector('input[type="checkbox"]');
       if (!cb.checked) return;
@@ -160,6 +186,8 @@ function setupCustomerForm() {
       const start = b.querySelector('.day-start').value;
       const end = b.querySelector('.day-end').value;
       if (start && end) dayTimes[cb.value] = { start, end };
+      const p = parseInt(b.querySelector('.day-price').value);
+      if (p && p > 0) dayPrices[cb.value] = p;
     });
 
     if (!name) return alert('Nama pelanggan harus diisi');
@@ -168,7 +196,7 @@ function setupCustomerForm() {
     if (!price || price <= 0) return alert('Harga harus diisi dengan benar');
 
     try {
-      await addCustomer(name, days, dayTimes, price);
+      await addCustomer(name, days, dayTimes, dayPrices, price);
       form.reset();
       showCustomerForm();
       await renderCustomers();
@@ -191,12 +219,14 @@ window.showEditModal = async function(id) {
   document.getElementById('edit-price').value = customer.price_per_session;
 
   const dayTimes = customer.day_times || {};
+  const dayPrices = customer.day_prices || {};
   const editDays = document.getElementById('edit-days');
   editDays.innerHTML = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'].map(d => {
     const checked = (customer.days || []).includes(d);
     const t = dayTimes[d] || {};
     const start = t.start || customer.start_time?.slice(0,5) || '15:00';
     const end = t.end || customer.end_time?.slice(0,5) || '17:00';
+    const price = dayPrices[d] != null ? dayPrices[d] : (customer.price_per_session || '');
     return `
       <div class="day-block">
         <label class="day-check">
@@ -206,6 +236,7 @@ window.showEditModal = async function(id) {
           <input type="time" class="day-start" value="${start}">
           <span>-</span>
           <input type="time" class="day-end" value="${end}">
+          <input type="number" class="day-price" placeholder="Harga" min="0" value="${price}">
         </div>
       </div>
     `;
@@ -229,6 +260,7 @@ function setupEditForm() {
     const blocks = document.querySelectorAll('#edit-days .day-block');
     const days = [];
     const dayTimes = {};
+    const dayPrices = {};
     blocks.forEach(b => {
       const cb = b.querySelector('input[type="checkbox"]');
       if (!cb.checked) return;
@@ -236,6 +268,8 @@ function setupEditForm() {
       const start = b.querySelector('.day-start').value;
       const end = b.querySelector('.day-end').value;
       if (start && end) dayTimes[cb.value] = { start, end };
+      const p = parseInt(b.querySelector('.day-price').value);
+      if (p && p > 0) dayPrices[cb.value] = p;
     });
 
     if (!name) return alert('Nama harus diisi');
@@ -244,7 +278,7 @@ function setupEditForm() {
     if (!price || price <= 0) return alert('Harga harus diisi');
 
     try {
-      await updateCustomer(id, name, days, dayTimes, price);
+      await updateCustomer(id, name, days, dayTimes, dayPrices, price);
       closeEditModal();
       await renderCustomers();
       alert('Data pelanggan berhasil diperbarui!');
@@ -373,7 +407,7 @@ window.showDayAttendance = async function(dateStr, dayName) {
       <div class="attendance-item" data-cid="${c.id}" data-status="${status}">
         <div class="attendance-info">
           <strong>${c.name}</strong>
-          <span class="attendance-time">${t.start?.slice(0,5)}-${t.end?.slice(0,5)}</span>
+          <span class="attendance-time">${t.start?.slice(0,5)}-${t.end?.slice(0,5)} · Rp ${getDayPrice(c, dayName).toLocaleString('id-ID')}</span>
         </div>
         <div class="attendance-actions">
           <button class="att-btn ${status === 'hadir' ? 'active' : ''}" data-action="hadir" onclick="attendanceAction('${c.id}','${dateStr}','${status}','hadir')">Hadir</button>
@@ -402,12 +436,13 @@ window.attendanceAction = async function(customerId, date, currentStatus, newSta
   list.innerHTML = sessions.map(c => {
     const att = todayAtt.find(a => a.customer_id === c.id);
     const status = att ? att.status : 'none';
-    const t = getDayTime(c, DAY_HEADERS[new Date(date + 'T00:00:00').getDay()]);
+    const dayName = DAY_HEADERS[new Date(date + 'T00:00:00').getDay()];
+    const t = getDayTime(c, dayName);
     return `
       <div class="attendance-item" data-cid="${c.id}" data-status="${status}">
         <div class="attendance-info">
           <strong>${c.name}</strong>
-          <span class="attendance-time">${t.start?.slice(0,5)}-${t.end?.slice(0,5)}</span>
+          <span class="attendance-time">${t.start?.slice(0,5)}-${t.end?.slice(0,5)} · Rp ${getDayPrice(c, dayName).toLocaleString('id-ID')}</span>
         </div>
         <div class="attendance-actions">
           <button class="att-btn ${status === 'hadir' ? 'active' : ''}" data-action="hadir" onclick="attendanceAction('${c.id}','${date}','${status}','hadir')">Hadir</button>
@@ -483,23 +518,26 @@ window.generateReceipt = async function() {
 
   const hadirSessions = attendance || [];
   const totalSessions = hadirSessions.length;
-  const totalPrice = totalSessions * Number(customer.price_per_session);
+  const dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  const totalPrice = hadirSessions.reduce((sum, a) => {
+    const d = new Date(a.date + 'T00:00:00');
+    return sum + getDayPrice(customer, dayNames[d.getDay()]);
+  }, 0);
 
   const receiptDiv = document.getElementById('receipt-output');
   const monthName = `${MONTHS_INDO[month - 1]} ${year}`;
-
-  const dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 
   const sessionsHtml = hadirSessions.map(a => {
     const d = new Date(a.date + 'T00:00:00');
     const dayName = dayNames[d.getDay()];
     const t = getDayTime(customer, dayName);
+    const price = getDayPrice(customer, dayName);
     return `
       <tr>
         <td>${a.date}</td>
         <td>${dayName}</td>
         <td>${t.start?.slice(0,5)} - ${t.end?.slice(0,5)}</td>
-        <td>Rp ${Number(customer.price_per_session).toLocaleString('id-ID')}</td>
+        <td>Rp ${price.toLocaleString('id-ID')}</td>
       </tr>
     `;
   }).join('');
@@ -515,7 +553,7 @@ window.generateReceipt = async function() {
           <tr><td>Nama Siswa</td><td>: <strong>${customer.name}</strong></td></tr>
           <tr><td>Periode</td><td>: <strong>${monthName}</strong></td></tr>
           <tr><td>Jam Les</td><td>: ${getTimeDisplay(customer)}</td></tr>
-          <tr><td>Harga/Sesi</td><td>: Rp ${Number(customer.price_per_session).toLocaleString('id-ID')}</td></tr>
+          <tr><td>Harga/Sesi</td><td>: ${getPriceDisplay(customer)}</td></tr>
         </table>
         <table class="receipt-sessions">
           <thead>
@@ -585,7 +623,7 @@ function renderModules() {
     return `
       <div class="jilid-card ${m.class}" data-jilid="${m.jilid}" onclick="showPertemuan(${m.jilid})">
         <div class="jilid-card-cover">
-          <img src="img/covers/jilid${m.jilid}.${m.jilid === 4 ? 'jpeg' : 'jfif'}" alt="Jilid ${m.jilid}" loading="lazy">
+          <img src="img/covers/jilid${m.jilid}.jpg" alt="Jilid ${m.jilid}" loading="lazy">
         </div>
         <div class="jilid-card-body">
           <div class="jilid-topics">
@@ -693,6 +731,108 @@ function togglePertemuan(header) {
 window.showPertemuan = showPertemuan;
 window.togglePertemuan = togglePertemuan;
 
+// ============ PAPER GENERATOR ============
+
+const PAPER_TOPICS = {
+  1: ['Greetings','Introduction','Alphabet','Numbers','Colors','Shapes','Classroom Objects','Classroom Commands','Days','Family','Body Parts','Five Senses'],
+  2: ['Animals','Wild & Farm Animals','Food','Drinks','Fruits','Vegetables','Likes & Dislikes','Clothes','Weather','Seasons'],
+  3: ['My House','Rooms','Furniture','Prepositions','Daily Activities','Time','Morning – Night','Simple Routine','Transportation','Places in Town','Jobs'],
+  4: ['Opposites','Adjectives','Feelings','Simple Sentences','There is / There are','I Have / We Have','Can / Can\'t','Reading Practice','Conversation']
+};
+
+function updatePaperTopics() {
+  const jilid = document.getElementById('paper-jilid').value;
+  const topicSelect = document.getElementById('paper-topic');
+  const topics = PAPER_TOPICS[jilid] || [];
+  topicSelect.innerHTML = topics.map(t => `<option value="${t}">${t}</option>`).join('');
+}
+
+window.updatePaperTopics = updatePaperTopics;
+
+async function generatePaper() {
+  const btn = document.getElementById('paper-gen-btn');
+  const result = document.getElementById('paper-result');
+  const content = document.getElementById('paper-content');
+  const jilid = document.getElementById('paper-jilid').value;
+  const topic = document.getElementById('paper-topic').value;
+
+  if (!topic) { alert('Pilih tema terlebih dahulu!'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite">&#9696;</span> Generating...';
+
+  try {
+    const res = await fetch('/api/generate-paper', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jilid: `Jilid ${jilid}`,
+        topic: topic,
+        title: `${topic} — Jilid ${jilid}`
+      })
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    const title = `${topic} — Jilid ${jilid}`;
+    content.innerHTML = `
+      <div class="paper-a4">
+        <h1>${topic}</h1>
+        <div class="paper-meta">Jilid ${jilid} — NewSantara Private Course</div>
+        ${data.content.split('\n').filter(l => l.trim()).map(line => {
+          if (line.startsWith('**') && line.endsWith('**')) {
+            const t = line.replace(/\*\*/g,'');
+            if (t.startsWith('1.')||t.startsWith('2.')||t.startsWith('3.')||t.startsWith('4.')||t.startsWith('5.')) return `<h2>${t.replace(/^\d+\.\s*/,'')}</h2>`;
+            return `<h2>${t}</h2>`;
+          }
+          if (line.startsWith('- ')) return `<li>${line.slice(2)}</li>`;
+          if (/^\d+[\.\)]/.test(line)) return `<p><span class="soal-num">${line.match(/^\d+[\.\)]/)[0]}</span>${line.replace(/^\d+[\.\)]\s*/,'')}</p>`;
+          if (line.startsWith('|') && line.endsWith('|')) return line;
+          if (line.startsWith('*') && line.endsWith('*')) return `<em>${line.slice(1,-1)}</em>`;
+          return `<p>${line}</p>`;
+        }).join('\n')}
+      </div>
+    `;
+
+    result.style.display = 'block';
+    result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) {
+    alert('Gagal generate: ' + err.message);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Generate &amp; Cetak PDF';
+}
+
+window.generatePaper = generatePaper;
+
+function printPaper() {
+  window.print();
+}
+
+window.printPaper = printPaper;
+
+function closePaper() {
+  document.getElementById('paper-result').style.display = 'none';
+}
+
+window.closePaper = closePaper;
+
+// Initialize paper topics on tab switch
+const origSwitchTab = window.switchTab || switchTab;
+const switchTabWithPaper = function(tabName) {
+  if (tabName === 'modules') {
+    setTimeout(updatePaperTopics, 100);
+  }
+};
+// Hook into existing switchTab
+const origSwitchTab2 = switchTab;
+switchTab = function(tabName) {
+  origSwitchTab2(tabName);
+  if (tabName === 'modules') setTimeout(updatePaperTopics, 50);
+};
+
 // ============ REPORTS / STATISTICS ============
 
 async function renderReports() {
@@ -734,12 +874,12 @@ async function renderStatisticsSummary() {
 
     const monthIncome = (monthAttendance || []).reduce((sum, a) => {
       const c = customers.find(c => c.id === a.customer_id);
-      return sum + (c ? Number(c.price_per_session) : 0);
+      return sum + (c ? getPriceForDate(c, a.date) : 0);
     }, 0);
 
     const yearIncome = (yearAttendance || []).reduce((sum, a) => {
       const c = customers.find(c => c.id === a.customer_id);
-      return sum + (c ? Number(c.price_per_session) : 0);
+      return sum + (c ? getPriceForDate(c, a.date) : 0);
     }, 0);
 
     const monthSessions = (monthAttendance || []).length;
@@ -802,7 +942,7 @@ async function renderIncomeChart() {
 
       const total = (attendance || []).reduce((sum, a) => {
         const c = customers.find(c => c.id === a.customer_id);
-        return sum + (c ? Number(c.price_per_session) : 0);
+        return sum + (c ? getPriceForDate(c, a.date) : 0);
       }, 0);
 
       data.push(total);
@@ -881,7 +1021,7 @@ async function renderCustomerActivity() {
       const monthSessions = (monthAttendance || []).filter(a => a.customer_id === c.id).length;
       const lastSession = (allAttendance || []).find(a => a.customer_id === c.id);
       const lastDate = lastSession ? lastSession.date : '-';
-      const totalBill = totalSessions * Number(c.price_per_session);
+      const totalBill = (allAttendance || []).filter(a => a.customer_id === c.id).reduce((sum, a) => sum + getPriceForDate(c, a.date), 0);
       const isActive = monthSessions > 0;
 
       return `
