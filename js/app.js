@@ -575,6 +575,11 @@ window.generateReceipt = async function() {
           </tfoot>
         </table>
         <div class="receipt-footer">
+          <div class="receipt-bank">
+            <p><strong>Pembayaran dapat dilakukan melalui:</strong></p>
+            <p>Bank BLU by BCA &nbsp;|&nbsp; No. Rek. 004358009909</p>
+            <p>a.n. MOKHAMAD ARIFIN ZAKARIYA</p>
+          </div>
           <p>Terima kasih telah mempercayakan pendidikan putra/putri kepada kami</p>
         </div>
       </div>

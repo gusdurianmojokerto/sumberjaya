@@ -655,6 +655,26 @@ table tbody tr:last-child td { border-bottom: none; }
   font-style: italic;
 }
 
+.receipt-bank {
+  background: var(--bg);
+  border: 1px dashed var(--primary-light);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-style: normal;
+}
+
+.receipt-bank p {
+  margin-bottom: 2px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.receipt-bank p:first-child {
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
 /* Modal Styles */
 .modal {
   position: fixed;
