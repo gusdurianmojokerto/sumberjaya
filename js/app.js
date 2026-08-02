@@ -53,6 +53,10 @@ function getPriceDisplay(customer) {
   return 'Bervariasi';
 }
 
+function formatLocalDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let calendarCustomers = [];
@@ -306,8 +310,8 @@ function getDayNumber(dayName) {
 async function loadCalendarData() {
   const { data: customers } = await supabase.from('customers').select('*');
   calendarCustomers = customers || [];
-  const startDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0];
-  const endDate = new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0];
+  const startDate = formatLocalDate(new Date(currentYear, currentMonth, 1));
+  const endDate = formatLocalDate(new Date(currentYear, currentMonth + 1, 0));
   const { data: attendance } = await supabase
     .from('attendance')
     .select('*')
@@ -505,7 +509,7 @@ window.generateReceipt = async function() {
 
   const [year, month] = monthVal.split('-').map(Number);
   const startDate = `${monthVal}-01`;
-  const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+      const endDate = formatLocalDate(new Date(year, month, 0));
 
   const { data: attendance } = await supabase
     .from('attendance')
@@ -764,7 +768,7 @@ async function generatePaper() {
   if (!topic) { alert('Pilih tema terlebih dahulu!'); return; }
 
   btn.disabled = true;
-  btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite">&#9696;</span> Generating...';
+  btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite">&#9696;</span> Membuat modul, mohon tunggu ±1 menit...';
 
   try {
     const res = await fetch('/api/generate-paper', {
@@ -780,23 +784,80 @@ async function generatePaper() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    const title = `${topic} — Jilid ${jilid}`;
+    const inline = (s) => s
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/`(.+?)`/g, '<code>$1</code>');
+
+    const lines = (data.content || '').split('\n');
+    let html = '';
+    let inTable = false;
+    let tableHeader = false;
+    let inList = false;
+
+    const closeList = () => {
+      if (inList) { html += '</ul>'; inList = false; }
+    };
+
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) continue;
+
+      if (line.startsWith('|') && line.endsWith('|')) {
+        const stripped = line.replace(/\|/g, '').trim();
+        const isSep = stripped !== '' && [...stripped].every(ch => ch === '-' || ch === ':' || ch === ' ');
+        if (!inTable) {
+          inTable = true;
+          tableHeader = true;
+          closeList();
+          html += '<table class="vocab-table">';
+        }
+        if (isSep) continue;
+        const cells = line.split('|').slice(1, -1).map(c => c.trim());
+        if (cells.length === 0) continue;
+        if (tableHeader) {
+          tableHeader = false;
+          html += `<tr>${cells.map(c => `<th>${inline(c)}</th>`).join('')}</tr>`;
+        } else {
+          html += `<tr>${cells.map(c => `<td>${inline(c)}</td>`).join('')}</tr>`;
+        }
+        continue;
+      } else if (inTable) {
+        inTable = false;
+        html += '</table>';
+      }
+
+      if (/^#+\s/.test(line)) {
+        closeList();
+        const level = Math.min(line.match(/^#+/)[0].length, 3);
+        if (level === 1) continue;
+        const text = line.replace(/^#+\s*/, '');
+        const tag = level === 2 ? 'h2' : 'h3';
+        html += `<${tag}>${inline(text)}</${tag}>`;
+      } else if (/^---+$/.test(line) || /^\*\*\*+$/.test(line)) {
+        closeList();
+        html += '<hr>';
+      } else if (line.startsWith('> ')) {
+        closeList();
+        html += `<div class="reading-box">${inline(line.slice(2))}</div>`;
+      } else if (line.startsWith('- ')) {
+        if (!inList) { inList = true; html += '<ul>'; }
+        html += `<li>${inline(line.slice(2))}</li>`;
+      } else if (/^\d+[\.\)]\s/.test(line)) {
+        closeList();
+        html += `<p><span class="soal-num">${line.match(/^\d+[\.\)]/)[0]}</span>${inline(line.replace(/^\d+[\.\)]\s*/, ''))}</p>`;
+      } else {
+        closeList();
+        html += `<p>${inline(line)}</p>`;
+      }
+    }
+    closeList();
+    if (inTable) html += '</table>';
+
     content.innerHTML = `
       <div class="paper-a4">
         <h1>${topic}</h1>
         <div class="paper-meta">Jilid ${jilid} — NewSantara Private Course</div>
-        ${data.content.split('\n').filter(l => l.trim()).map(line => {
-          if (line.startsWith('**') && line.endsWith('**')) {
-            const t = line.replace(/\*\*/g,'');
-            if (t.startsWith('1.')||t.startsWith('2.')||t.startsWith('3.')||t.startsWith('4.')||t.startsWith('5.')) return `<h2>${t.replace(/^\d+\.\s*/,'')}</h2>`;
-            return `<h2>${t}</h2>`;
-          }
-          if (line.startsWith('- ')) return `<li>${line.slice(2)}</li>`;
-          if (/^\d+[\.\)]/.test(line)) return `<p><span class="soal-num">${line.match(/^\d+[\.\)]/)[0]}</span>${line.replace(/^\d+[\.\)]\s*/,'')}</p>`;
-          if (line.startsWith('|') && line.endsWith('|')) return line;
-          if (line.startsWith('*') && line.endsWith('*')) return `<em>${line.slice(1,-1)}</em>`;
-          return `<p>${line}</p>`;
-        }).join('\n')}
+        ${html}
       </div>
     `;
 
@@ -851,7 +912,7 @@ async function renderStatisticsSummary() {
   const now = new Date();
   const startOfMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
   const startOfYear = `${now.getFullYear()}-01-01`;
-  const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  const endDate = formatLocalDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
   try {
     const { data: customers } = await supabase.from('customers').select('*');
@@ -933,7 +994,7 @@ async function renderIncomeChart() {
       const month = m.getMonth() + 1;
       const monthStr = `${String(month).padStart(2,'0')}`;
       const startDate = `${year}-${monthStr}-01`;
-      const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+  const endDate = formatLocalDate(new Date(year, month, 0));
 
       labels.push(`${MONTHS_INDO[month-1].slice(0,3)} ${String(year).slice(2)}`);
 
@@ -1002,7 +1063,7 @@ async function renderCustomerActivity() {
 
     const now = new Date();
     const startOfMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const endOfMonth = formatLocalDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
     const customerIds = customers.map(c => c.id);
 

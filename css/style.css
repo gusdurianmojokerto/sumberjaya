@@ -1135,13 +1135,13 @@ table tbody tr:last-child td { border-bottom: none; }
 
 .paper-a4 {
   background: white;
-  padding: 40px 48px;
+  padding: 32px 40px;
   border-radius: 8px;
   box-shadow: var(--shadow-md);
   font-family: 'Times New Roman', Times, serif;
   line-height: 1.7;
   color: #1a1a1a;
-  max-width: 800px;
+  max-width: 950px;
   margin: 0 auto;
 }
 
@@ -1242,6 +1242,11 @@ table tbody tr:last-child td { border-bottom: none; }
 }
 
 /* Print Styles */
+@page {
+  size: A4 landscape;
+  margin: 0;
+}
+
 @media print {
   body * { visibility: hidden; }
   #paper-content, #paper-content * { visibility: visible; }
@@ -1249,8 +1254,9 @@ table tbody tr:last-child td { border-bottom: none; }
     position: absolute;
     left: 0;
     top: 0;
-    width: 210mm;
-    padding: 20mm 15mm;
+    width: 297mm;
+    min-height: 210mm;
+    padding: 12mm 16mm;
     margin: 0;
     box-shadow: none;
     border-radius: 0;
