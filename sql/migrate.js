@@ -5,7 +5,10 @@ const pool = new Pool({
 });
 const migrations = [
   "ALTER TABLE customers ADD COLUMN IF NOT EXISTS day_times JSONB DEFAULT '{}'",
-  "ALTER TABLE customers ADD COLUMN IF NOT EXISTS day_prices JSONB DEFAULT '{}'"
+  "ALTER TABLE customers ADD COLUMN IF NOT EXISTS day_prices JSONB DEFAULT '{}'",
+  "CREATE TABLE IF NOT EXISTS modules (jilid INT PRIMARY KEY, cover_url TEXT)",
+  "ALTER TABLE modules ENABLE ROW LEVEL SECURITY",
+  "CREATE POLICY IF NOT EXISTS \"Allow all on modules\" ON modules FOR ALL USING (true) WITH CHECK (true)"
 ];
 Promise.all(migrations.map(q => pool.query(q)))
   .then(() => { console.log('Migration OK'); process.exit(0); })

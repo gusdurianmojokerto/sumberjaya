@@ -624,15 +624,29 @@ window.downloadReceiptPNG = async function() {
 
 // ============ MODULES ============
 
-function renderModules() {
+async function loadModuleCovers() {
+  const { data, error } = await supabase.from('modules').select('jilid, cover_url');
+  if (error) return {};
+  const map = {};
+  (data || []).forEach(m => { map[m.jilid] = m.cover_url; });
+  return map;
+}
+
+function getCoverSrc(covers, jilid) {
+  return covers[jilid] || `img/covers/jilid${jilid}.jpg`;
+}
+
+async function renderModules() {
   const grid = document.getElementById('modules-grid');
   if (!grid) return;
+
+  const covers = await loadModuleCovers();
 
   grid.innerHTML = MODULES_DATA.map(m => {
     return `
       <div class="jilid-card ${m.class}" data-jilid="${m.jilid}" onclick="showPertemuan(${m.jilid})">
         <div class="jilid-card-cover">
-          <img src="img/covers/jilid${m.jilid}.jpg" alt="Jilid ${m.jilid}" loading="lazy">
+          <img src="${getCoverSrc(covers, m.jilid)}" alt="Jilid ${m.jilid}" loading="lazy">
         </div>
         <div class="jilid-card-body">
           <div class="jilid-topics">
