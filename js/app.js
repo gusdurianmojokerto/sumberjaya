@@ -536,12 +536,13 @@ window.generateReceipt = async function() {
     const dayName = dayNames[d.getDay()];
     const t = getDayTime(customer, dayName);
     const price = getDayPrice(customer, dayName);
+    const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
     return `
       <tr>
-        <td>${a.date}</td>
+        <td>${dateStr}</td>
         <td>${dayName}</td>
         <td>${t.start?.slice(0,5)} - ${t.end?.slice(0,5)}</td>
-        <td>Rp ${price.toLocaleString('id-ID')}</td>
+        <td style="text-align:right">Rp ${price.toLocaleString('id-ID')}</td>
       </tr>
     `;
   }).join('');
@@ -574,7 +575,7 @@ window.generateReceipt = async function() {
           <tfoot>
             <tr>
               <td colspan="3"><strong>Total ${totalSessions} Pertemuan</strong></td>
-              <td><strong>Rp ${totalPrice.toLocaleString('id-ID')}</strong></td>
+              <td style="text-align:right"><strong>Rp ${totalPrice.toLocaleString('id-ID')}</strong></td>
             </tr>
           </tfoot>
         </table>
@@ -673,7 +674,7 @@ function showPertemuan(jilid) {
   const descEl = document.getElementById('pertemuan-desc');
   const list = document.getElementById('pertemuan-list');
 
-  const colors = { 1: '#2563eb', 2: '#16a34a', 3: '#d97706', 4: '#dc2626' };
+  const colors = { 1: '#0d9488', 2: '#1e3a5f', 3: '#c9a84c', 4: '#0d9488' };
   const c = colors[m.jilid];
 
   document.querySelectorAll('.jilid-card').forEach(el => el.classList.remove('active'));
@@ -1037,8 +1038,8 @@ async function renderIncomeChart() {
         datasets: [{
           label: 'Pemasukan (Rp)',
           data,
-          backgroundColor: 'rgba(26, 115, 232, 0.7)',
-          borderColor: 'rgba(26, 115, 232, 1)',
+          backgroundColor: 'rgba(13, 148, 136, 0.7)',
+          borderColor: 'rgba(13, 148, 136, 1)',
           borderWidth: 1,
           borderRadius: 4
         }]
