@@ -23,6 +23,7 @@
       <button class="tab-btn" data-tab="receipt">Cetak Struk</button>
       <button class="tab-btn" data-tab="modules">Modul</button>
       <button class="tab-btn" data-tab="reports">Laporan</button>
+      <button class="tab-btn" data-tab="progress">Progres Anak</button>
     </div>
   </div>
 </nav>
@@ -180,6 +181,202 @@
     </div>
   </section>
 
+  <!-- TAB: PROGRESS REPORT -->
+  <section id="tab-progress" class="tab-content">
+    <div class="card">
+      <h3>Cetak Laporan Progres Bulanan (PDF)</h3>
+      <div class="progress-filter">
+        <div class="form-row">
+          <label>Pilih Murid</label>
+          <select id="print-murid">
+            <option value="">-- Pilih Murid --</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Pilih Bulan</label>
+          <select id="print-month"></select>
+        </div>
+        <div class="form-row">
+          <label>Tahun</label>
+          <select id="print-year"></select>
+        </div>
+        <button class="btn-primary progress-filter-btn" onclick="buildPrintReport()">Buat Laporan</button>
+      </div>
+      <div id="progress-print-area" style="display:none;margin-top:24px">
+        <div id="progress-print-content" class="report-a4"></div>
+        <div class="print-actions">
+          <button class="btn-success" onclick="printProgressReport()">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Cetak / Simpan PDF
+          </button>
+          <button class="btn-primary" style="background:var(--text-secondary)" onclick="closePrintReport()">Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Buat / Buka Laporan Bulanan</h3>
+      <div class="progress-filter">
+        <div class="form-row">
+          <label>Nama Anak / Siswa</label>
+          <input type="text" id="progress-child" list="progress-child-list" placeholder="Cth: Budi Santoso" autocomplete="off">
+          <datalist id="progress-child-list"></datalist>
+        </div>
+        <div class="form-row">
+          <label>Bulan</label>
+          <select id="progress-month"></select>
+        </div>
+        <div class="form-row">
+          <label>Tahun</label>
+          <select id="progress-year"></select>
+        </div>
+        <button class="btn-primary progress-filter-btn" onclick="openProgressReport()">Buka Laporan</button>
+      </div>
+    </div>
+
+    <div class="card" id="progress-report-card" style="display:none">
+      <div class="progress-head">
+        <div class="progress-head-info">
+          <h3 id="progress-title">Laporan Progres</h3>
+          <p id="progress-subtitle"></p>
+        </div>
+        <div class="progress-overall">
+          <div class="progress-overall-label">
+            <span>Progres Keseluruhan</span>
+            <strong id="progress-overall-value">0%</strong>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-overall-fill" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="progress-section">
+        <div class="progress-section-head">
+          <h3>Materi yang Dipelajari</h3>
+          <button class="btn-success btn-sm progress-add-btn" onclick="showMateriModal()">+ Tambah Materi</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Materi</th>
+                <th>Apa yang Dipelajari</th>
+                <th>Tanggal</th>
+                <th>Status</th>
+                <th style="min-width:170px">Progres</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="progress-materi-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="progress-section">
+        <h3>Progres Pembelajaran</h3>
+        <div class="stats-grid" id="progress-stats"></div>
+        <div class="progress-form">
+          <div class="form-row progress-row-2">
+            <div>
+              <label>Total Pertemuan Bulan Ini</label>
+              <input type="number" id="progress-sessions-total" min="0" placeholder="Cth: 8">
+            </div>
+            <div>
+              <label>Pertemuan Dihadiri</label>
+              <input type="number" id="progress-sessions-hadir" min="0" placeholder="Cth: 7">
+            </div>
+          </div>
+          <div class="recap-auto">
+            <span id="recap-source">Terisi otomatis dari rekap absen bulan ini (Kalender Absen).</span>
+            <button type="button" class="btn-primary btn-sm" onclick="refreshSessionRecap()">Ambil dari Rekap</button>
+          </div>
+          <div class="form-row">
+            <label>Tingkat Pemahaman</label>
+            <select id="progress-understanding">
+              <option value="">-- Pilih --</option>
+              <option value="Sangat Baik">Sangat Baik</option>
+              <option value="Baik">Baik</option>
+              <option value="Cukup">Cukup</option>
+              <option value="Perlu Bimbingan">Perlu Bimbingan</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Catatan Perkembangan Anak</label>
+            <textarea id="progress-notes" rows="4" placeholder="Tulis kemajuan yang dicapai, materi yang sudah dikuasai, dan hal yang perlu ditingkatkan..."></textarea>
+          </div>
+          <div class="form-row">
+            <label>Kendala &amp; Catatan untuk Orang Tua</label>
+            <textarea id="progress-parent-notes" rows="3" placeholder="Tulis kendala selama belajar dan saran untuk orang tua..."></textarea>
+          </div>
+          <button class="btn-primary" onclick="saveProgressAssessment()">Simpan Catatan Progres</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Daftar Laporan Tersimpan</h3>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Nama Anak</th>
+              <th>Bulan</th>
+              <th>Jumlah Materi</th>
+              <th>Progres</th>
+              <th>Terakhir Diubah</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="progress-list-body"></tbody>
+        </table>
+      </div>
+      <p class="progress-note">Data laporan disimpan lokal di browser (localStorage) untuk keperluan testing.</p>
+    </div>
+  </section>
+
+</div>
+
+<!-- MATERI MODAL -->
+<div id="materiModal" class="modal" style="display:none">
+  <div class="modal-content">
+    <span class="modal-close" onclick="closeMateriModal()">&times;</span>
+    <h3 style="margin-bottom:16px" id="materi-modal-title">Tambah Materi</h3>
+    <form id="materi-form">
+      <input type="hidden" id="materi-id">
+      <div class="form-row">
+        <label>Nama Materi</label>
+        <input type="text" id="materi-title" placeholder="Cth: Greetings &amp; Introduction" required>
+      </div>
+      <div class="form-row">
+        <label>Apa yang Dipelajari</label>
+        <textarea id="materi-learned" rows="3" placeholder="Cth: Siswa belajar menyapa, memperkenalkan diri, dan menanyakan kabar..."></textarea>
+      </div>
+      <div class="form-row progress-row-2">
+        <div>
+          <label>Tanggal Belajar</label>
+          <input type="date" id="materi-date">
+        </div>
+        <div>
+          <label>Status Materi</label>
+          <select id="materi-status">
+            <option value="Rencana">Rencana</option>
+            <option value="Berjalan">Berjalan</option>
+            <option value="Selesai" selected>Selesai</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Progres Materi (%)</label>
+        <input type="number" id="materi-progress" min="0" max="100" value="0">
+      </div>
+      <div style="display:flex;gap:8px;justify-content:end;margin-top:8px">
+        <button type="button" class="btn-primary" style="background:var(--text-secondary)" onclick="closeMateriModal()">Batal</button>
+        <button type="submit" class="btn-success">Simpan Materi</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- DAY ATTENDANCE MODAL -->
@@ -221,6 +418,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<div id="print-root"></div>
   <script type="importmap">
   {
     "imports": {

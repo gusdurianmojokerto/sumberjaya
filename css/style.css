@@ -1354,6 +1354,8 @@ table tbody tr:last-child td { border-bottom: none; }
 }
 
 /* ============ PRINT STYLES ============ */
+#print-root { display: none; }
+
 @page {
   size: A4 landscape;
   margin: 0;
@@ -1383,6 +1385,492 @@ table tbody tr:last-child td { border-bottom: none; }
   }
   #paper-content h2 { color: #000; border-left-color: #000; }
   #paper-content .vocab-table th { background: #333; }
+
+  #progress-print-content, #progress-print-content * { visibility: visible; }
+  #progress-print-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 420mm;
+    min-height: 297mm;
+    padding: 14mm 18mm;
+    margin: 0;
+    box-shadow: none;
+    border-radius: 0;
+    border: none;
+    font-size: 14px;
+  }
+  #progress-print-content .report-info,
+  #progress-print-content .report-note-box,
+  #progress-print-content .report-stat { break-inside: avoid; }
+  #progress-print-content .report-table tr { break-inside: avoid; }
+
+  body.printing-report > *:not(#print-root) { display: none !important; }
+  body.printing-report #print-root { display: block !important; }
+  #print-root, #print-root * { visibility: visible !important; }
+  #print-root .report-print-sheet {
+    width: 330mm;
+    height: 420mm;
+    box-sizing: border-box;
+    padding: 16mm 18mm 18mm;
+    margin: 0;
+    background: #fff;
+    color: #1a1a1a;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  #print-root .report-print-sheet .report-footer-quote {
+    margin-top: auto;
+    padding: 18px 28px 10px;
+    min-height: 5.4em;
+    font-size: 13px;
+    line-height: 1.9;
+    border-top: 1px solid #ccc;
+  }
+  #print-root .report-print-sheet .report-info,
+  #print-root .report-print-sheet .report-note-box,
+  #print-root .report-print-sheet .report-stat { break-inside: avoid; }
+  #print-root .report-print-sheet .report-table tr { break-inside: avoid; }
+  #print-root .report-print-sheet .report-head,
+  #print-root .report-print-sheet .report-title { break-after: avoid; }
+}
+
+/* ============ PROGRESS REPORT ============ */
+.progress-filter {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.progress-filter .form-row { margin-bottom: 0; }
+
+.progress-filter-btn { height: 44px; white-space: nowrap; }
+
+.progress-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.progress-head-info h3 { margin-bottom: 4px; }
+
+.progress-head-info p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.progress-overall { min-width: 260px; flex: 1; max-width: 360px; }
+
+.progress-overall-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.progress-overall-label strong {
+  font-size: 1.35rem;
+  color: var(--accent-gold-dark);
+  letter-spacing: -0.5px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 12px;
+  background: var(--bg);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 20px;
+  background: linear-gradient(90deg, var(--accent-gold), var(--accent-teal));
+  transition: width 0.4s ease;
+}
+
+.progress-bar-sm { height: 8px; min-width: 90px; }
+
+.progress-section { margin-top: 4px; }
+
+.progress-section + .progress-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px dashed var(--border);
+}
+
+.progress-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.progress-section-head h3 { margin-bottom: 0; }
+
+.progress-add-btn { flex-shrink: 0; }
+
+.materi-desc {
+  max-width: 320px;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.materi-progress-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 150px;
+}
+
+.materi-progress-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent-teal-dark);
+  min-width: 38px;
+  text-align: right;
+}
+
+.materi-progress-cell input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 6px;
+  border-radius: 6px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+}
+
+.materi-progress-cell input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-teal);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(13, 148, 136, 0.45);
+  cursor: pointer;
+}
+
+.materi-progress-cell input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-teal);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(13, 148, 136, 0.45);
+  cursor: pointer;
+}
+
+.status-badge.progress {
+  background: rgba(201, 168, 76, 0.12);
+  color: var(--accent-gold-dark);
+  border: 1px solid rgba(201, 168, 76, 0.35);
+}
+
+.status-badge.plain {
+  background: var(--bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.progress-form { margin-top: 20px; }
+
+.progress-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.progress-form textarea,
+#materiModal textarea {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  background: var(--card);
+  color: var(--text);
+  resize: vertical;
+  transition: all 0.2s;
+}
+
+.progress-form textarea:focus,
+#materiModal textarea:focus {
+  outline: none;
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+}
+
+.progress-note {
+  margin-top: 14px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* --- Cetak laporan bulanan --- */
+.recap-auto {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: -6px 0 18px;
+  padding: 8px 12px;
+  background: rgba(13, 148, 136, 0.06);
+  border: 1px dashed rgba(13, 148, 136, 0.35);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.recap-auto button { flex-shrink: 0; }
+
+.report-footer-quote {
+  margin-top: 18px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+  line-height: 1.7;
+}
+
+.print-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.report-a4 {
+  background: #fff;
+  padding: 30px 36px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  font-size: 13px;
+  line-height: 1.6;
+  color: #1a1a1a;
+  max-width: 100%;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.report-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  border-bottom: 3px solid var(--accent-gold);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+
+.report-brand {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: -0.3px;
+}
+
+.report-brand-sub {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--accent-teal-dark);
+  font-weight: 600;
+}
+
+.report-head-right {
+  text-align: right;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.report-title {
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--primary);
+  margin: 16px 0 2px;
+}
+
+.report-period {
+  text-align: center;
+  font-size: 0.82rem;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.report-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 28px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 0.84rem;
+}
+
+.report-info-row {
+  display: flex;
+  gap: 8px;
+}
+
+.report-info-row span {
+  color: var(--text-secondary);
+  min-width: 130px;
+}
+
+.report-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.report-stat {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 6px;
+  text-align: center;
+  background: linear-gradient(135deg, rgba(10, 22, 40, 0.02), rgba(13, 148, 136, 0.05));
+}
+
+.report-stat .v {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--accent-gold-dark);
+  line-height: 1.3;
+}
+
+.report-stat .l {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.report-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.report-bar-label strong { color: var(--accent-gold-dark); }
+
+.report-bar { height: 10px; margin-bottom: 6px; }
+
+.report-a4 h2 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 18px 0 8px;
+  padding-left: 9px;
+  border-left: 4px solid var(--accent-teal);
+}
+
+.report-a4 h3 {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-secondary);
+  margin: 0 0 6px;
+}
+
+.report-a4 h3::before { display: none; }
+
+.report-table {
+  font-size: 0.8rem;
+  border: 1px solid var(--border);
+}
+
+.report-table td { padding: 7px 10px; vertical-align: top; }
+
+.report-table tbody tr:hover { background: transparent; }
+
+.report-notes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.report-note-box {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  min-height: 74px;
+}
+
+.report-note-box p {
+  font-size: 0.8rem;
+  white-space: pre-line;
+  color: #333;
+}
+
+@media (max-width: 900px) {
+  .progress-filter { grid-template-columns: 1fr 1fr; }
+  .progress-filter-btn { grid-column: 1 / -1; width: 100%; }
+  .materi-desc { max-width: 200px; }
+  .report-a4 { padding: 20px; }
+  .report-info, .report-notes-grid { grid-template-columns: 1fr; }
+  .report-summary { grid-template-columns: 1fr 1fr; }
+  .report-head { flex-direction: column; }
+  .report-head-right { text-align: left; }
+}
+
+@media (max-width: 900px) {
+  .progress-filter { grid-template-columns: 1fr 1fr; }
+  .progress-filter-btn { grid-column: 1 / -1; width: 100%; }
+  .materi-desc { max-width: 200px; }
+}
+
+@media (max-width: 768px) {
+  .progress-head { flex-direction: column; align-items: stretch; }
+  .progress-overall { max-width: none; min-width: 0; }
+  .progress-row-2 { grid-template-columns: 1fr; gap: 0; }
 }
 
 /* ============ RESPONSIVE ============ */

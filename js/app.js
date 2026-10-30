@@ -297,6 +297,7 @@ document.addEventListener('click', (e) => {
   if (e.target.classList.contains('modal')) {
     closeEditModal();
     closeDayAttendance();
+    closeMateriModal();
   }
 });
 
@@ -888,8 +889,23 @@ async function generatePaper() {
 
 window.generatePaper = generatePaper;
 
+function setPageStyle(size) {
+  let el = document.getElementById('page-size-style');
+  if (!el) {
+    el = document.createElement('style');
+    el.id = 'page-size-style';
+    document.head.appendChild(el);
+  }
+  el.textContent = `@page { size: ${size}; margin: 0; }`;
+}
+
 function printPaper() {
+  const area = document.getElementById('progress-print-area');
+  const prevArea = area ? area.style.display : '';
+  if (area) area.style.display = 'none';
+  setPageStyle('A4 landscape');
   window.print();
+  if (area) area.style.display = prevArea;
 }
 
 window.printPaper = printPaper;
@@ -1123,6 +1139,629 @@ async function renderCustomerActivity() {
   }
 }
 
+// ============ PROGRESS REPORT (LOCAL) ============
+
+const PROGRESS_LS_KEY = 'sjc_progress_reports';
+let progressCurrentKey = null;
+
+function escapeHtml(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function loadProgressReports() {
+  try {
+    const raw = localStorage.getItem(PROGRESS_LS_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+function saveProgressReportsList(list) {
+  localStorage.setItem(PROGRESS_LS_KEY, JSON.stringify(list));
+}
+
+function progressKeyOf(child, month, year) {
+  return `${child.trim().toLowerCase()}|${year}-${String(Number(month) + 1).padStart(2, '0')}`;
+}
+
+function getProgressRecordByKey(key) {
+  return loadProgressReports().find(r => r.key === key) || null;
+}
+
+function getOrCreateProgressRecord(child, month, year) {
+  const list = loadProgressReports();
+  const key = progressKeyOf(child, month, year);
+  let rec = list.find(r => r.key === key);
+  if (!rec) {
+    rec = {
+      key,
+      child: child.trim(),
+      month: Number(month),
+      year: Number(year),
+      sessionsTotal: '',
+      sessionsHadir: '',
+      understanding: '',
+      notes: '',
+      parentNotes: '',
+      updatedAt: '',
+      materials: []
+    };
+    list.push(rec);
+    saveProgressReportsList(list);
+  }
+  return rec;
+}
+
+function updateProgressRecord(rec) {
+  const list = loadProgressReports();
+  const idx = list.findIndex(r => r.key === rec.key);
+  rec.updatedAt = new Date().toISOString();
+  if (idx >= 0) list[idx] = rec;
+  else list.push(rec);
+  saveProgressReportsList(list);
+}
+
+function calcOverallProgress(rec) {
+  const materials = rec.materials || [];
+  if (materials.length === 0) return 0;
+  const sum = materials.reduce((s, m) => s + (Number(m.progress) || 0), 0);
+  return Math.round(sum / materials.length);
+}
+
+function formatDateID(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return dateStr;
+  return `${d.getDate()} ${MONTHS_INDO[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
+}
+
+function formatDateTimeID(iso) {
+  if (!iso) return 'Belum pernah disimpan';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return `${d.getDate()} ${MONTHS_INDO[d.getMonth()].slice(0, 3)} ${d.getFullYear()}, ${String(d.getHours()).padStart(2, '0')}.${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function fillProgressSelectors() {
+  const monthSel = document.getElementById('progress-month');
+  const yearSel = document.getElementById('progress-year');
+  if (monthSel.options.length === 0) {
+    monthSel.innerHTML = MONTHS_INDO.map((m, i) => `<option value="${i}">${m}</option>`).join('');
+    monthSel.value = String(new Date().getMonth());
+  }
+  if (yearSel.options.length === 0) {
+    const nowYear = new Date().getFullYear();
+    const years = [];
+    for (let y = nowYear - 2; y <= nowYear + 1; y++) years.push(y);
+    yearSel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+    yearSel.value = String(nowYear);
+  }
+}
+
+async function renderProgressChildSuggestions() {
+  const dl = document.getElementById('progress-child-list');
+  if (!dl) return;
+  const names = new Set(loadProgressReports().map(r => r.child));
+  try {
+    const { data: customers } = await supabase.from('customers').select('name');
+    (customers || []).forEach(c => { if (c.name) names.add(c.name); });
+  } catch (err) { /* mode lokal: saran dari data tersimpan saja */ }
+  dl.innerHTML = [...names].sort().map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+}
+
+function renderProgressTab() {
+  fillProgressSelectors();
+  fillPrintSelectors();
+  renderProgressChildSuggestions();
+  fillPrintMuridOptions();
+  renderProgressList();
+}
+
+window.openProgressReport = function() {
+  const child = document.getElementById('progress-child').value.trim();
+  if (!child) return alert('Nama anak harus diisi');
+  const month = parseInt(document.getElementById('progress-month').value);
+  const year = parseInt(document.getElementById('progress-year').value);
+  const rec = getOrCreateProgressRecord(child, month, year);
+  progressCurrentKey = rec.key;
+  fillPrintMuridOptions();
+  renderProgressReport();
+  const card = document.getElementById('progress-report-card');
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  fillSessionRecap(rec);
+};
+
+function renderProgressReport() {
+  const rec = getProgressRecordByKey(progressCurrentKey);
+  if (!rec) return;
+
+  document.getElementById('progress-title').textContent = `Laporan Progres ${rec.child}`;
+  document.getElementById('progress-subtitle').textContent =
+    `${MONTHS_INDO[rec.month]} ${rec.year} • Terakhir diubah: ${formatDateTimeID(rec.updatedAt)}`;
+
+  const overall = calcOverallProgress(rec);
+  document.getElementById('progress-overall-value').textContent = `${overall}%`;
+  document.getElementById('progress-overall-fill').style.width = `${overall}%`;
+
+  renderProgressMateri(rec);
+  renderProgressStats(rec);
+
+  document.getElementById('progress-sessions-total').value = rec.sessionsTotal || '';
+  document.getElementById('progress-sessions-hadir').value = rec.sessionsHadir || '';
+  document.getElementById('progress-understanding').value = rec.understanding || '';
+  document.getElementById('progress-notes').value = rec.notes || '';
+  document.getElementById('progress-parent-notes').value = rec.parentNotes || '';
+
+  renderProgressList();
+}
+
+function materiStatusBadge(status) {
+  if (status === 'Selesai') return 'active';
+  if (status === 'Berjalan') return 'progress';
+  return 'plain';
+}
+
+function renderProgressMateri(rec) {
+  const tbody = document.getElementById('progress-materi-body');
+  const materials = rec.materials || [];
+  if (materials.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="loading">Belum ada materi. Klik "+ Tambah Materi" untuk menambahkan materi bulan ini.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = materials.map((m, i) => {
+    const p = Math.max(0, Math.min(100, Number(m.progress) || 0));
+    return `
+      <tr>
+        <td>${i + 1}</td>
+        <td><strong>${escapeHtml(m.title)}</strong></td>
+        <td class="materi-desc">${m.learned ? escapeHtml(m.learned) : '-'}</td>
+        <td>${formatDateID(m.date)}</td>
+        <td><span class="status-badge ${materiStatusBadge(m.status)}">${escapeHtml(m.status || 'Rencana')}</span></td>
+        <td>
+          <div class="materi-progress-cell">
+            <input type="range" min="0" max="100" value="${p}" oninput="previewMateriProgress(this)" onchange="commitMateriProgress('${m.id}', this.value)">
+            <span class="materi-progress-label" id="mp-${m.id}">${p}%</span>
+          </div>
+        </td>
+        <td class="actions">
+          <button class="btn-primary btn-sm" style="background:var(--warning);color:white" onclick="showMateriModal('${m.id}')">Edit</button>
+          <button class="btn-danger btn-sm" onclick="deleteMateriHandler('${m.id}')">Hapus</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderProgressStats(rec) {
+  const container = document.getElementById('progress-stats');
+  const materials = rec.materials || [];
+  const selesai = materials.filter(m => m.status === 'Selesai').length;
+  const avg = calcOverallProgress(rec);
+  const hadir = rec.sessionsHadir === '' || rec.sessionsHadir == null ? '-' : rec.sessionsHadir;
+  const total = rec.sessionsTotal === '' || rec.sessionsTotal == null ? '-' : rec.sessionsTotal;
+
+  container.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-value">${materials.length}</div>
+      <div class="stat-label">Total Materi</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-value">${selesai}</div>
+      <div class="stat-label">Materi Selesai</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-value">${avg}%</div>
+      <div class="stat-label">Rata-rata Progres</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${hadir}<span style="font-size:0.9rem;color:var(--text-muted)">/${total}</span></div>
+      <div class="stat-label">Kehadiran</div>
+    </div>
+  `;
+}
+
+window.previewMateriProgress = function(input) {
+  const label = input.parentElement.querySelector('.materi-progress-label');
+  if (label) label.textContent = `${input.value}%`;
+};
+
+window.commitMateriProgress = function(id, value) {
+  const rec = getProgressRecordByKey(progressCurrentKey);
+  if (!rec) return;
+  const m = (rec.materials || []).find(x => x.id === id);
+  if (!m) return;
+  let p = parseInt(value);
+  if (isNaN(p)) p = 0;
+  m.progress = Math.max(0, Math.min(100, p));
+  updateProgressRecord(rec);
+  renderProgressReport();
+};
+
+window.showMateriModal = function(id) {
+  if (!progressCurrentKey) return alert('Buka laporan bulanan terlebih dahulu.');
+  const form = document.getElementById('materi-form');
+  form.reset();
+  document.getElementById('materi-id').value = '';
+  document.getElementById('materi-progress').value = 0;
+  document.getElementById('materi-status').value = 'Selesai';
+  document.getElementById('materi-modal-title').textContent = 'Tambah Materi';
+
+  if (id) {
+    const rec = getProgressRecordByKey(progressCurrentKey);
+    const m = rec && (rec.materials || []).find(x => x.id === id);
+    if (m) {
+      document.getElementById('materi-id').value = m.id;
+      document.getElementById('materi-title').value = m.title || '';
+      document.getElementById('materi-learned').value = m.learned || '';
+      document.getElementById('materi-date').value = m.date || '';
+      document.getElementById('materi-status').value = m.status || 'Rencana';
+      document.getElementById('materi-progress').value = Number(m.progress) || 0;
+      document.getElementById('materi-modal-title').textContent = 'Edit Materi';
+    }
+  }
+  document.getElementById('materiModal').style.display = 'flex';
+};
+
+window.closeMateriModal = function() {
+  document.getElementById('materiModal').style.display = 'none';
+};
+
+function setupMateriForm() {
+  document.getElementById('materi-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const rec = getProgressRecordByKey(progressCurrentKey);
+    if (!rec) return alert('Buka laporan bulanan terlebih dahulu.');
+
+    const id = document.getElementById('materi-id').value;
+    const title = document.getElementById('materi-title').value.trim();
+    if (!title) return alert('Nama materi harus diisi');
+
+    let progress = parseInt(document.getElementById('materi-progress').value);
+    if (isNaN(progress)) progress = 0;
+    progress = Math.max(0, Math.min(100, progress));
+
+    const data = {
+      title,
+      learned: document.getElementById('materi-learned').value.trim(),
+      date: document.getElementById('materi-date').value,
+      status: document.getElementById('materi-status').value,
+      progress
+    };
+
+    if (id) {
+      const m = (rec.materials || []).find(x => x.id === id);
+      if (!m) return alert('Materi tidak ditemukan.');
+      Object.assign(m, data);
+    } else {
+      rec.materials = rec.materials || [];
+      rec.materials.push({ id: 'm' + Date.now() + Math.random().toString(36).slice(2, 7), ...data });
+    }
+
+    updateProgressRecord(rec);
+    closeMateriModal();
+    renderProgressReport();
+  });
+}
+
+window.deleteMateriHandler = function(id) {
+  if (!confirm('Yakin ingin menghapus materi ini?')) return;
+  const rec = getProgressRecordByKey(progressCurrentKey);
+  if (!rec) return;
+  rec.materials = (rec.materials || []).filter(m => m.id !== id);
+  updateProgressRecord(rec);
+  renderProgressReport();
+};
+
+window.saveProgressAssessment = function() {
+  const rec = getProgressRecordByKey(progressCurrentKey);
+  if (!rec) return alert('Buka laporan bulanan terlebih dahulu.');
+  rec.sessionsTotal = document.getElementById('progress-sessions-total').value;
+  rec.sessionsHadir = document.getElementById('progress-sessions-hadir').value;
+  rec.understanding = document.getElementById('progress-understanding').value;
+  rec.notes = document.getElementById('progress-notes').value;
+  rec.parentNotes = document.getElementById('progress-parent-notes').value;
+  updateProgressRecord(rec);
+  renderProgressReport();
+  alert('Catatan progres berhasil disimpan!');
+};
+
+function renderProgressList() {
+  const tbody = document.getElementById('progress-list-body');
+  if (!tbody) return;
+  const list = loadProgressReports().slice().sort((a, b) => {
+    const ta = a.updatedAt || '';
+    const tb = b.updatedAt || '';
+    return tb.localeCompare(ta);
+  });
+
+  if (list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="loading">Belum ada laporan tersimpan.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.map(r => {
+    const overall = calcOverallProgress(r);
+    return `
+      <tr>
+        <td><strong>${escapeHtml(r.child)}</strong></td>
+        <td>${MONTHS_INDO[r.month]} ${r.year}</td>
+        <td>${(r.materials || []).length}</td>
+        <td>
+          <div class="materi-progress-cell">
+            <div class="progress-bar progress-bar-sm"><div class="progress-fill" style="width:${overall}%"></div></div>
+            <span class="materi-progress-label">${overall}%</span>
+          </div>
+        </td>
+        <td>${formatDateTimeID(r.updatedAt)}</td>
+        <td class="actions">
+          <button class="btn-primary btn-sm" style="background:var(--warning);color:white" onclick="openProgressReportByKey('${r.key}')">Buka</button>
+          <button class="btn-danger btn-sm" onclick="deleteProgressReportHandler('${r.key}')">Hapus</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+window.openProgressReportByKey = function(key) {
+  const rec = getProgressRecordByKey(key);
+  if (!rec) return alert('Laporan tidak ditemukan.');
+  fillProgressSelectors();
+  document.getElementById('progress-child').value = rec.child;
+  document.getElementById('progress-month').value = String(rec.month);
+  document.getElementById('progress-year').value = String(rec.year);
+  progressCurrentKey = rec.key;
+  fillPrintMuridOptions();
+  renderProgressReport();
+  const card = document.getElementById('progress-report-card');
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  fillSessionRecap(rec);
+};
+
+window.deleteProgressReportHandler = function(key) {
+  if (!confirm('Yakin ingin menghapus laporan ini? Semua materi dan catatannya akan terhapus.')) return;
+  const list = loadProgressReports().filter(r => r.key !== key);
+  saveProgressReportsList(list);
+  if (progressCurrentKey === key) {
+    progressCurrentKey = null;
+    document.getElementById('progress-report-card').style.display = 'none';
+  }
+  renderProgressList();
+  renderProgressChildSuggestions();
+  fillPrintMuridOptions();
+};
+
+function fillPrintSelectors() {
+  const monthSel = document.getElementById('print-month');
+  const yearSel = document.getElementById('print-year');
+  if (monthSel.options.length === 0) {
+    monthSel.innerHTML = MONTHS_INDO.map((m, i) => `<option value="${i}">${m}</option>`).join('');
+    monthSel.value = String(new Date().getMonth());
+  }
+  if (yearSel.options.length === 0) {
+    const nowYear = new Date().getFullYear();
+    const years = [];
+    for (let y = nowYear - 2; y <= nowYear + 1; y++) years.push(y);
+    yearSel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+    yearSel.value = String(nowYear);
+  }
+}
+
+async function fillPrintMuridOptions() {
+  const sel = document.getElementById('print-murid');
+  if (!sel) return;
+  const apply = (names) => {
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">-- Pilih Murid --</option>' +
+      [...names].sort().map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+    if (prev) sel.value = prev;
+  };
+  const names = new Set(loadProgressReports().map(r => r.child));
+  apply(names);
+  try {
+    const { data: customers } = await supabase.from('customers').select('name');
+    (customers || []).forEach(c => { if (c.name) names.add(c.name); });
+    apply(names);
+  } catch (err) { /* mode lokal */ }
+}
+
+function buildPrintReportHtml(rec) {
+  const materials = rec.materials || [];
+  const overall = calcOverallProgress(rec);
+  const selesai = materials.filter(m => m.status === 'Selesai').length;
+  const today = new Date();
+  const printedAt = `${today.getDate()} ${MONTHS_INDO[today.getMonth()]} ${today.getFullYear()}`;
+
+  const rows = materials.length
+    ? materials.map((m, i) => `
+        <tr>
+          <td style="text-align:center">${i + 1}</td>
+          <td><strong>${escapeHtml(m.title)}</strong></td>
+          <td>${m.learned ? escapeHtml(m.learned) : '-'}</td>
+          <td style="text-align:center;white-space:nowrap">${formatDateID(m.date)}</td>
+          <td style="text-align:center;white-space:nowrap">${escapeHtml(m.status || 'Rencana')}</td>
+          <td style="text-align:center;white-space:nowrap">${Math.max(0, Math.min(100, Number(m.progress) || 0))}%</td>
+        </tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:#888;padding:18px">Tidak ada materi pada bulan ini</td></tr>';
+
+  const notes = rec.notes && rec.notes.trim() ? escapeHtml(rec.notes) : '<span style="color:#999">-</span>';
+  const parentNotes = rec.parentNotes && rec.parentNotes.trim() ? escapeHtml(rec.parentNotes) : '<span style="color:#999">-</span>';
+  const hadir = rec.sessionsHadir === '' || rec.sessionsHadir == null ? '-' : rec.sessionsHadir;
+  const totalSess = rec.sessionsTotal === '' || rec.sessionsTotal == null ? '-' : rec.sessionsTotal;
+
+  return `
+    <div class="report-head">
+      <div style="display:flex;align-items:center;gap:10px">
+        <img src="sql/logo.png" alt="Logo" style="height:44px;width:auto;object-fit:contain">
+        <div>
+          <div class="report-brand">NewSantara Private Course</div>
+          <div class="report-brand-sub">Bimbingan Belajar Profesional</div>
+        </div>
+      </div>
+      <div class="report-head-right">
+        <div>Tanggal Cetak: <strong>${printedAt}</strong></div>
+        <div>Dokumen: LP/${rec.year}/${String(rec.month + 1).padStart(2, '0')}/NS</div>
+      </div>
+    </div>
+
+    <h1 class="report-title">LAPORAN PROGRES &amp; PERKEMBANGAN ANAK</h1>
+    <div class="report-period">Periode Bulan ${MONTHS_INDO[rec.month]} ${rec.year}</div>
+
+    <div class="report-info">
+      <div class="report-info-row"><span>Nama Anak / Siswa</span><strong>${escapeHtml(rec.child)}</strong></div>
+      <div class="report-info-row"><span>Bulan Laporan</span><strong>${MONTHS_INDO[rec.month]} ${rec.year}</strong></div>
+      <div class="report-info-row"><span>Tingkat Pemahaman</span><strong>${rec.understanding ? escapeHtml(rec.understanding) : '-'}</strong></div>
+      <div class="report-info-row"><span>Kehadiran</span><strong>${hadir} dari ${totalSess} pertemuan</strong></div>
+    </div>
+
+    <div class="report-summary">
+      <div class="report-stat"><div class="v">${materials.length}</div><div class="l">Total Materi</div></div>
+      <div class="report-stat"><div class="v">${selesai}</div><div class="l">Materi Selesai</div></div>
+      <div class="report-stat"><div class="v">${overall}%</div><div class="l">Progres Keseluruhan</div></div>
+      <div class="report-stat"><div class="v">${rec.understanding ? escapeHtml(rec.understanding) : '-'}</div><div class="l">Pemahaman</div></div>
+    </div>
+
+    <div class="report-bar-label"><span>Progres Pembelajaran Bulan ${MONTHS_INDO[rec.month]}</span><strong>${overall}%</strong></div>
+    <div class="progress-bar report-bar"><div class="progress-fill" style="width:${overall}%"></div></div>
+
+    <h2>Materi yang Dipelajari</h2>
+    <table class="report-table">
+      <thead>
+        <tr>
+          <th style="width:36px">No</th>
+          <th style="width:20%">Materi</th>
+          <th>Apa yang Dipelajari</th>
+          <th style="width:90px">Tanggal</th>
+          <th style="width:80px">Status</th>
+          <th style="width:64px">Progres</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+
+    <div class="report-notes-grid">
+      <div class="report-note-box">
+        <h3>Catatan Perkembangan Anak</h3>
+        <p>${notes}</p>
+      </div>
+      <div class="report-note-box">
+        <h3>Kendala &amp; Catatan untuk Orang Tua</h3>
+        <p>${parentNotes}</p>
+      </div>
+    </div>
+
+    <div class="report-footer-quote">"Belajar bukan hanya tentang seberapa tinggi nilai yang diraih,<br>tetapi tentang tumbuhnya rasa ingin tahu, keberanian untuk mencoba, dan semangat untuk terus belajar."</div>
+  `;
+}
+
+window.buildPrintReport = function() {
+  const child = document.getElementById('print-murid').value;
+  if (!child) return alert('Pilih murid terlebih dahulu');
+  const month = parseInt(document.getElementById('print-month').value);
+  const year = parseInt(document.getElementById('print-year').value);
+  const rec = getProgressRecordByKey(progressKeyOf(child, month, year));
+  if (!rec) {
+    return alert(`Laporan ${MONTHS_INDO[month]} ${year} untuk ${child} belum ada. Buka laporan terlebih dahulu lewat tombol "Buka Laporan".`);
+  }
+  document.getElementById('progress-print-content').innerHTML = buildPrintReportHtml(rec);
+  const area = document.getElementById('progress-print-area');
+  area.style.display = 'block';
+  area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+window.printProgressReport = function() {
+  const src = document.getElementById('progress-print-content');
+  if (!src || !src.innerHTML.trim()) return alert('Buat laporan terlebih dahulu');
+
+  const root = document.getElementById('print-root');
+  root.innerHTML = `<div class="report-print-sheet">${src.innerHTML}</div>`;
+  document.body.classList.add('printing-report');
+  setPageStyle('330mm 420mm');
+  window.print();
+  document.body.classList.remove('printing-report');
+  root.innerHTML = '';
+  setPageStyle('A4 landscape');
+};
+
+window.closePrintReport = function() {
+  document.getElementById('progress-print-area').style.display = 'none';
+};
+
+function countScheduledSessions(days, month, year) {
+  const list = (days || []).map(d => DAY_HEADERS.indexOf(d)).filter(i => i >= 0);
+  if (list.length === 0) return 0;
+  const lastDate = new Date(year, month + 1, 0).getDate();
+  let count = 0;
+  for (let d = 1; d <= lastDate; d++) {
+    const dow = (new Date(year, month, d).getDay() + 6) % 7;
+    if (list.includes(dow)) count++;
+  }
+  return count;
+}
+
+async function loadSessionRecap(child, month, year) {
+  const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const endDate = formatLocalDate(new Date(year, month + 1, 0));
+
+  let customer = null;
+  try {
+    const { data } = await supabase.from('customers').select('*').eq('name', child);
+    customer = (data || [])[0] || null;
+  } catch (err) { customer = null; }
+
+  let attendance = [];
+  try {
+    let query = supabase.from('attendance').select('*').gte('date', startDate).lte('date', endDate);
+    if (customer) query = query.eq('customer_id', customer.id);
+    const { data, error } = await query;
+    if (error) throw error;
+    attendance = data || [];
+  } catch (err) {
+    return null;
+  }
+
+  const hadir = attendance.filter(a => a.status === 'hadir').length;
+  const alpha = attendance.filter(a => a.status === 'alpha').length;
+  const scheduled = customer ? countScheduledSessions(customer.days, month, year) : 0;
+  const total = Math.max(scheduled, hadir + alpha);
+
+  return { total, hadir, alpha, hasCustomer: !!customer };
+}
+
+async function fillSessionRecap(rec) {
+  const source = document.getElementById('recap-source');
+  if (!rec) return;
+  if (source) source.textContent = 'Mengambil data rekap absen...';
+  const recap = await loadSessionRecap(rec.child, rec.month, rec.year);
+  if (progressCurrentKey !== rec.key) return;
+  if (!recap) {
+    if (source) source.textContent = 'Gagal mengambil rekap absen. Isi manual atau klik "Ambil dari Rekap".';
+    return;
+  }  const changed = String(rec.sessionsTotal) !== String(recap.total) || String(rec.sessionsHadir) !== String(recap.hadir);
+  rec.sessionsTotal = recap.total;
+  rec.sessionsHadir = recap.hadir;
+  if (changed) updateProgressRecord(rec);
+  if (source) {
+    source.textContent = `Terisi otomatis dari rekap absen ${MONTHS_INDO[rec.month]} ${rec.year}: ${recap.hadir} hadir dari ${recap.total} pertemuan` +
+      (recap.alpha ? `, ${recap.alpha} alpha` : '') +
+      (recap.hasCustomer ? ' (jadwal + absen).' : ' (rekap absen).');
+  }
+  renderProgressReport();
+}
+
+window.refreshSessionRecap = function() {
+  const rec = getProgressRecordByKey(progressCurrentKey);
+  if (!rec) return alert('Buka laporan bulanan terlebih dahulu.');
+  const source = document.getElementById('recap-source');
+  if (source) source.textContent = 'Mengambil data rekap absen...';
+  fillSessionRecap(rec);
+};
+
 // ============ TAB SWITCHING ============
 
 function switchTab(tabName) {
@@ -1134,6 +1773,7 @@ function switchTab(tabName) {
   if (tabName === 'calendar') renderCalendar();
   if (tabName === 'modules') renderModules();
   if (tabName === 'reports') renderReports();
+  if (tabName === 'progress') renderProgressTab();
 }
 
 // ============ INIT ============
@@ -1145,6 +1785,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   setupCustomerForm();
   setupEditForm();
+  setupMateriForm();
   await renderCustomers();
   populateMonthSelect();
   await loadCustomerSelects();
