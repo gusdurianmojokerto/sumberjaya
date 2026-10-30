@@ -1139,9 +1139,10 @@ async function renderCustomerActivity() {
   }
 }
 
-// ============ PROGRESS REPORT (LOCAL) ============
+// ============ PROGRESS REPORT (Supabase + local cache) ============
 
 const PROGRESS_LS_KEY = 'sjc_progress_reports';
+const PROGRESS_TABLE = 'progress_reports';
 let progressCurrentKey = null;
 
 function escapeHtml(str) {
@@ -1162,6 +1163,88 @@ function loadProgressReports() {
 
 function saveProgressReportsList(list) {
   localStorage.setItem(PROGRESS_LS_KEY, JSON.stringify(list));
+}
+
+function progressRecToRow(rec) {
+  return {
+    key: rec.key,
+    child: rec.child,
+    month: Number(rec.month),
+    year: Number(rec.year),
+    sessions_total: rec.sessionsTotal == null ? '' : String(rec.sessionsTotal),
+    sessions_hadir: rec.sessionsHadir == null ? '' : String(rec.sessionsHadir),
+    understanding: rec.understanding || '',
+    notes: rec.notes || '',
+    parent_notes: rec.parentNotes || '',
+    updated_at: rec.updatedAt || null,
+    materials: Array.isArray(rec.materials) ? rec.materials : []
+  };
+}
+
+function progressRowToRec(row) {
+  return {
+    key: row.key,
+    child: row.child,
+    month: Number(row.month),
+    year: Number(row.year),
+    sessionsTotal: row.sessions_total == null ? '' : row.sessions_total,
+    sessionsHadir: row.sessions_hadir == null ? '' : row.sessions_hadir,
+    understanding: row.understanding || '',
+    notes: row.notes || '',
+    parentNotes: row.parent_notes || '',
+    updatedAt: row.updated_at || '',
+    materials: Array.isArray(row.materials) ? row.materials : []
+  };
+}
+
+function progressTimestamp(iso) {
+  const t = Date.parse(iso || '');
+  return isNaN(t) ? 0 : t;
+}
+
+function pushProgressRecordToSupabase(rec) {
+  try {
+    supabase.from(PROGRESS_TABLE).upsert(progressRecToRow(rec))
+      .then(({ error }) => { if (error) console.warn('Sync laporan gagal:', error.message); })
+      .catch(() => {});
+  } catch (err) { /* offline: data tetap aman di localStorage */ }
+}
+
+async function syncProgressReportsWithSupabase() {
+  try {
+    const { data, error } = await supabase.from(PROGRESS_TABLE).select('*');
+    if (error) throw error;
+    const remoteRows = Array.isArray(data) ? data : [];
+    const merged = loadProgressReports();
+    const localByKey = new Map(merged.map(r => [r.key, r]));
+    const remoteByKey = new Map(remoteRows.map(r => [r.key, r]));
+
+    remoteRows.forEach(row => {
+      const rec = progressRowToRec(row);
+      const loc = localByKey.get(rec.key);
+      if (!loc) {
+        merged.push(rec);
+        localByKey.set(rec.key, rec);
+      } else if (progressTimestamp(rec.updatedAt) > progressTimestamp(loc.updatedAt)) {
+        Object.assign(loc, rec);
+      }
+    });
+
+    const toUpsert = merged.filter(rec => {
+      const rem = remoteByKey.get(rec.key);
+      return !rem || progressTimestamp(rec.updatedAt) > progressTimestamp(rem.updated_at);
+    });
+    if (toUpsert.length > 0) {
+      const { error: upsertErr } = await supabase.from(PROGRESS_TABLE).upsert(toUpsert.map(progressRecToRow));
+      if (upsertErr) throw upsertErr;
+    }
+
+    saveProgressReportsList(merged);
+    return true;
+  } catch (err) {
+    console.warn('Sinkron laporan dengan Supabase gagal (tetap mode lokal):', err.message || err);
+    return false;
+  }
 }
 
 function progressKeyOf(child, month, year) {
@@ -1192,6 +1275,7 @@ function getOrCreateProgressRecord(child, month, year) {
     };
     list.push(rec);
     saveProgressReportsList(list);
+    pushProgressRecordToSupabase(rec);
   }
   return rec;
 }
@@ -1203,6 +1287,7 @@ function updateProgressRecord(rec) {
   if (idx >= 0) list[idx] = rec;
   else list.push(rec);
   saveProgressReportsList(list);
+  pushProgressRecordToSupabase(rec);
 }
 
 function calcOverallProgress(rec) {
@@ -1259,6 +1344,13 @@ function renderProgressTab() {
   renderProgressChildSuggestions();
   fillPrintMuridOptions();
   renderProgressList();
+  syncProgressReportsWithSupabase().then(synced => {
+    if (!synced || !document.getElementById('tab-progress').classList.contains('active')) return;
+    renderProgressList();
+    renderProgressChildSuggestions();
+    fillPrintMuridOptions();
+    if (progressCurrentKey) renderProgressReport();
+  });
 }
 
 window.openProgressReport = function() {
@@ -1527,6 +1619,11 @@ window.deleteProgressReportHandler = function(key) {
   if (!confirm('Yakin ingin menghapus laporan ini? Semua materi dan catatannya akan terhapus.')) return;
   const list = loadProgressReports().filter(r => r.key !== key);
   saveProgressReportsList(list);
+  try {
+    supabase.from(PROGRESS_TABLE).delete().eq('key', key)
+      .then(({ error }) => { if (error) console.warn('Hapus di Supabase gagal:', error.message); })
+      .catch(() => {});
+  } catch (err) { /* offline */ }
   if (progressCurrentKey === key) {
     progressCurrentKey = null;
     document.getElementById('progress-report-card').style.display = 'none';
@@ -1790,4 +1887,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   populateMonthSelect();
   await loadCustomerSelects();
   renderCalendar();
+  syncProgressReportsWithSupabase().then(synced => {
+    if (synced && document.getElementById('tab-progress')?.classList.contains('active')) {
+      renderProgressList();
+      renderProgressChildSuggestions();
+      fillPrintMuridOptions();
+    }
+  });
 });
